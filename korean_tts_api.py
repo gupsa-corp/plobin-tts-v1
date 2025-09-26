@@ -98,6 +98,6 @@ if __name__ == "__main__":
     print("  POST /tts - 텍스트를 음성으로 변환")
     print("  GET /health - 서버 상태 확인")
     print("  GET / - 기본 정보")
-    print("\n서버 주소: http://localhost:8000")
+    print("\n서버 주소: http://localhost:6001")
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=6001)
