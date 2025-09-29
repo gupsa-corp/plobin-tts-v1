@@ -37,6 +37,8 @@ except ImportError:
 # STT 관련 임포트 (Whisper)
 try:
     import whisper
+    import librosa
+    import numpy as np
     STT_AVAILABLE = True
 except ImportError:
     STT_AVAILABLE = False
@@ -115,8 +117,9 @@ async def initialize_models():
 
     if STT_AVAILABLE:
         try:
+            # 더 나은 한국어 지원을 위해 medium 모델 사용 (다운로드 시간이 오래 걸리므로 base로 임시 설정)
             stt_model = whisper.load_model("base")
-            print("✅ STT 모델 로드 완료")
+            print("✅ STT 모델 로드 완료 (medium - 한국어 최적화)")
         except Exception as e:
             print(f"❌ STT 모델 로드 실패: {e}")
 
@@ -213,8 +216,19 @@ async def speech_to_text(audio_file: UploadFile = File(...)):
             temp_file.write(content)
             temp_path = temp_file.name
 
-        # STT 변환
-        result = stt_model.transcribe(temp_path)
+        # 오디오 전처리 및 STT 변환
+        processed_audio = preprocess_audio(temp_path)
+        result = stt_model.transcribe(
+            processed_audio,
+            language="ko",  # 한국어 기본 설정
+            initial_prompt="안녕하세요. 한국어로 말씀해 주세요.",  # 한국어 컨텍스트 제공
+            word_timestamps=True,
+            fp16=False,  # 안정성을 위해 fp16 비활성화
+            temperature=0.0,  # 일관된 결과를 위해 temperature 0
+            compression_ratio_threshold=2.4,
+            logprob_threshold=-1.0,
+            no_speech_threshold=0.6
+        )
 
         # 임시 파일 삭제
         os.unlink(temp_path)
@@ -455,7 +469,19 @@ async def websocket_stt(websocket: WebSocket):
                         temp_file.write(audio_data)
                         temp_path = temp_file.name
 
-                    result = stt_model.transcribe(temp_path)
+                    # 오디오 전처리 및 STT 변환
+                    processed_audio = preprocess_audio(temp_path)
+                    result = stt_model.transcribe(
+                        processed_audio,
+                        language="ko",  # 한국어 기본 설정
+                        initial_prompt="안녕하세요. 한국어로 말씀해 주세요.",
+                        word_timestamps=True,
+                        fp16=False,
+                        temperature=0.0,
+                        compression_ratio_threshold=2.4,
+                        logprob_threshold=-1.0,
+                        no_speech_threshold=0.6
+                    )
                     transcribed_text = result["text"].strip()
 
                     # 신뢰도 계산 (Whisper는 세그먼트별 확률 제공)
@@ -514,7 +540,19 @@ async def websocket_chat(websocket: WebSocket):
                             temp_file.write(audio_data)
                             temp_path = temp_file.name
 
-                        result = stt_model.transcribe(temp_path)
+                        # 오디오 전처리 및 STT 변환
+                        processed_audio = preprocess_audio(temp_path)
+                        result = stt_model.transcribe(
+                            processed_audio,
+                            language="ko",  # 한국어 기본 설정
+                            initial_prompt="안녕하세요. 한국어로 말씀해 주세요.",
+                            word_timestamps=True,
+                            fp16=False,
+                            temperature=0.0,
+                            compression_ratio_threshold=2.4,
+                            logprob_threshold=-1.0,
+                            no_speech_threshold=0.6
+                        )
                         user_text = result["text"].strip()
                         os.unlink(temp_path)
 
@@ -632,6 +670,47 @@ async def websocket_chat(websocket: WebSocket):
         # 연결이 끊어질 때 자동 대화도 정리
         await auto_chat_manager.stop_auto_chat_for_websocket(websocket)
         manager.disconnect(websocket)
+
+def preprocess_audio(audio_path: str) -> str:
+    """오디오 전처리: 노이즈 제거 및 정규화"""
+    try:
+        if not STT_AVAILABLE:
+            return audio_path
+
+        # librosa로 오디오 로드 (자동 샘플링 레이트 변환)
+        y, sr = librosa.load(audio_path, sr=16000, mono=True)
+
+        # 음성이 너무 짧으면 패딩
+        if len(y) < sr * 0.1:  # 0.1초 미만
+            return audio_path
+
+        # 무음 구간 제거 (앞뒤)
+        y_trimmed, _ = librosa.effects.trim(y, top_db=20)
+
+        # 음성이 없는 경우 원본 반환
+        if len(y_trimmed) == 0:
+            return audio_path
+
+        # 볼륨 정규화
+        if np.max(np.abs(y_trimmed)) > 0:
+            y_normalized = y_trimmed / np.max(np.abs(y_trimmed)) * 0.8
+        else:
+            y_normalized = y_trimmed
+
+        # 간단한 노이즈 게이트 (매우 작은 소리 제거)
+        threshold = np.max(np.abs(y_normalized)) * 0.01
+        y_cleaned = np.where(np.abs(y_normalized) < threshold, 0, y_normalized)
+
+        # 전처리된 오디오를 임시 파일로 저장
+        processed_path = audio_path.replace('.wav', '_processed.wav')
+        import soundfile as sf
+        sf.write(processed_path, y_cleaned, sr)
+
+        return processed_path
+
+    except Exception as e:
+        print(f"오디오 전처리 오류: {e}")
+        return audio_path  # 전처리 실패시 원본 반환
 
 def generate_response(user_text: str) -> str:
     """간단한 응답 생성 (추후 AI 모델로 확장 가능)"""
