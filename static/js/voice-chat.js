@@ -337,8 +337,8 @@ class VoiceChatApp {
                     }
                 };
 
-                // 500ms마다 WebM 청크 생성 (실시간 처리를 위해)
-                this.mediaRecorder.start(500);
+                // 2초마다 WebM 청크 생성 (더 완전한 청크를 위해)
+                this.mediaRecorder.start(2000);
 
                 // 부분 전사 결과 표시 준비
                 this.preparePartialTranscription();
@@ -650,9 +650,23 @@ class VoiceChatApp {
             return;
         }
 
+        // 청크 크기 검증
+        if (audioBlob.size < 1000) {  // 1KB 미만은 무시
+            console.log('⚠️ 너무 작은 오디오 청크 무시:', audioBlob.size, 'bytes');
+            return;
+        }
+
         try {
             // WebM 오디오 블롭을 ArrayBuffer로 변환
             const arrayBuffer = await audioBlob.arrayBuffer();
+
+            // WebM 헤더 간단 확인
+            const uint8Array = new Uint8Array(arrayBuffer);
+            if (uint8Array.length < 32) {
+                console.log('⚠️ WebM 헤더가 너무 짧음 - 청크 무시');
+                return;
+            }
+
             const base64Audio = this.arrayBufferToBase64(arrayBuffer);
 
             // 스트리밍 STT WebSocket으로 WebM 청크 전송

@@ -4,6 +4,7 @@
 """
 
 import os
+import subprocess
 import numpy as np
 from config.settings import (
     AUDIO_SAMPLE_RATE,
@@ -74,7 +75,40 @@ def cleanup_temp_audio(audio_path: str):
         print(f"임시 파일 정리 오류: {e}")
 
 
+def convert_wav_to_webm(wav_path: str) -> str:
+    """WAV 파일을 WebM으로 변환"""
+    webm_path = wav_path.replace('.wav', '.webm')
+
+    try:
+        # ffmpeg를 사용하여 WAV → WebM 변환
+        subprocess.run([
+            'ffmpeg', '-i', wav_path,
+            '-c:a', 'libopus',  # Opus 오디오 코덱 사용
+            '-b:a', '64k',      # 64kbps 비트레이트
+            '-y',               # 기존 파일 덮어쓰기
+            webm_path
+        ], check=True, capture_output=True)
+
+        # 원본 WAV 파일 삭제
+        if os.path.exists(wav_path):
+            os.unlink(wav_path)
+
+        return webm_path
+
+    except subprocess.CalledProcessError as e:
+        # 변환 실패 시 원본 WAV 반환
+        print(f"⚠️ WebM 변환 실패, WAV 파일 유지: {e}")
+        return wav_path
+    except Exception as e:
+        print(f"⚠️ 변환 중 오류: {e}")
+        return wav_path
+
 def generate_audio_filename() -> str:
-    """고유한 오디오 파일명 생성"""
+    """고유한 오디오 파일명 생성 (WebM용)"""
+    import uuid
+    return f"audio_{uuid.uuid4().hex}.webm"
+
+def generate_wav_filename() -> str:
+    """고유한 WAV 파일명 생성 (TTS 임시 파일용)"""
     import uuid
     return f"audio_{uuid.uuid4().hex}.wav"

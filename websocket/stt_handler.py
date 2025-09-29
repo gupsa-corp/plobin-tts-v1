@@ -36,8 +36,8 @@ async def _process_audio_message(websocket: WebSocket, message_data: dict):
         # Base64 오디오 디코딩
         audio_data = base64.b64decode(message_data["data"])
 
-        # STT 처리
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+        # STT 처리 - WebM 형식으로 저장
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_file:
             temp_file.write(audio_data)
             temp_path = temp_file.name
 

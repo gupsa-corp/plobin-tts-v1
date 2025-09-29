@@ -115,10 +115,24 @@ class StreamingSTTService:
             timestamp = time.time()
 
         try:
+            # WebM 데이터 크기 검증
+            if len(audio_data) < 100:  # 너무 작은 청크는 무시
+                logger.warning(f"너무 작은 WebM 청크 무시: {len(audio_data)} bytes")
+                return
+
             # WebM 데이터를 임시 파일로 저장하여 Faster Whisper에 직접 전달
             with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as temp_file:
                 temp_file.write(audio_data)
                 temp_file_path = temp_file.name
+
+            # WebM 파일 유효성 간단 검증
+            if not self._is_valid_webm_file(temp_file_path):
+                logger.warning("유효하지 않은 WebM 파일 - 청크 무시")
+                try:
+                    os.unlink(temp_file_path)
+                except:
+                    pass
+                return
 
             chunk = AudioChunk(
                 data=temp_file_path,  # 파일 경로를 저장
@@ -134,6 +148,16 @@ class StreamingSTTService:
 
         except Exception as e:
             logger.error(f"WebM 오디오 청크 처리 오류: {e}")
+
+    def _is_valid_webm_file(self, file_path: str) -> bool:
+        """WebM 파일 유효성 간단 검증"""
+        try:
+            with open(file_path, 'rb') as f:
+                header = f.read(32)
+                # WebM/Matroska 매직 바이트 확인
+                return b'\x1a\x45\xdf\xa3' in header  # EBML header
+        except Exception:
+            return False
 
     async def transcribe_chunk(self, audio_chunk: AudioChunk) -> Optional[TranscriptionResult]:
         """

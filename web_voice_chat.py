@@ -11,6 +11,7 @@ import tempfile
 import warnings
 import json
 import uuid
+import subprocess
 from pathlib import Path
 from typing import Optional, List
 import base64
@@ -40,6 +41,35 @@ try:
     STT_AVAILABLE = True
 except ImportError:
     STT_AVAILABLE = False
+
+# 오디오 변환 함수
+def convert_wav_to_webm(wav_path: str) -> str:
+    """WAV 파일을 WebM으로 변환"""
+    webm_path = wav_path.replace('.wav', '.webm')
+
+    try:
+        # ffmpeg를 사용하여 WAV → WebM 변환
+        subprocess.run([
+            'ffmpeg', '-i', wav_path,
+            '-c:a', 'libopus',  # Opus 오디오 코덱 사용
+            '-b:a', '64k',      # 64kbps 비트레이트
+            '-y',               # 기존 파일 덮어쓰기
+            webm_path
+        ], check=True, capture_output=True)
+
+        # 원본 WAV 파일 삭제
+        if os.path.exists(wav_path):
+            os.unlink(wav_path)
+
+        return webm_path
+
+    except subprocess.CalledProcessError as e:
+        # 변환 실패 시 원본 WAV 반환
+        print(f"⚠️ WebM 변환 실패, WAV 파일 유지: {e}")
+        return wav_path
+    except Exception as e:
+        print(f"⚠️ 변환 중 오류: {e}")
+        return wav_path
 
 # 실시간 STT 서비스 임포트
 try:
@@ -191,22 +221,26 @@ async def text_to_speech(request: TTSRequest):
         if hasattr(tts_model, 'device') and str(tts_model.device) != device:
             tts_model = TTS(language=request.language, device=device)
 
-        # 임시 파일 생성
-        audio_filename = f"audio_{uuid.uuid4().hex}.wav"
-        audio_path = f"static/audio/{audio_filename}"
+        # 임시 WAV 파일 생성
+        wav_filename = f"audio_{uuid.uuid4().hex}.wav"
+        wav_path = f"static/audio/{wav_filename}"
 
-        # TTS 변환
+        # TTS 변환 (WAV로 생성)
         tts_model.tts_to_file(
             text=request.text,
             speaker_id=0,
-            output_path=audio_path,
+            output_path=wav_path,
             speed=request.speed,
             quiet=True
         )
 
+        # WAV → WebM 변환
+        final_path = convert_wav_to_webm(wav_path)
+        final_filename = os.path.basename(final_path)
+
         return TTSResponse(
             success=True,
-            audio_url=f"/static/audio/{audio_filename}"
+            audio_url=f"/static/audio/{final_filename}"
         )
 
     except Exception as e:
@@ -232,23 +266,44 @@ async def speech_to_text(audio_file: UploadFile = File(...)):
         # 오디오 데이터 읽기
         content = await audio_file.read()
 
+        # 파일 크기 검증
+        if len(content) < 100:
+            raise HTTPException(status_code=400, detail="오디오 파일이 너무 작습니다")
+
         # WebM 데이터를 임시 파일로 저장
         with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as temp_file:
             temp_file.write(content)
             webm_path = temp_file.name
 
+        # WebM 파일 유효성 검증
+        try:
+            with open(webm_path, 'rb') as f:
+                header = f.read(32)
+                if b'\x1a\x45\xdf\xa3' not in header:  # EBML header 확인
+                    raise HTTPException(status_code=400, detail="유효하지 않은 WebM 파일입니다")
+        except Exception as validation_error:
+            if os.path.exists(webm_path):
+                os.unlink(webm_path)
+            raise HTTPException(status_code=400, detail=f"WebM 파일 검증 실패: {str(validation_error)}")
+
         # STT 변환 (WebM 직접 처리)
-        result = stt_model.transcribe(
-            webm_path,
-            language="ko",  # 한국어 기본 설정
-            initial_prompt="안녕하세요. 한국어로 말씀해 주세요.",  # 한국어 컨텍스트 제공
-            word_timestamps=True,
-            fp16=False,  # 안정성을 위해 fp16 비활성화
-            temperature=0.0,  # 일관된 결과를 위해 temperature 0
-            compression_ratio_threshold=2.4,
-            logprob_threshold=-1.0,
-            no_speech_threshold=0.6
-        )
+        try:
+            result = stt_model.transcribe(
+                webm_path,
+                language="ko",  # 한국어 기본 설정
+                initial_prompt="안녕하세요. 한국어로 말씀해 주세요.",  # 한국어 컨텍스트 제공
+                word_timestamps=True,
+                fp16=False,  # 안정성을 위해 fp16 비활성화
+                temperature=0.0,  # 일관된 결과를 위해 temperature 0
+                compression_ratio_threshold=2.4,
+                logprob_threshold=-1.0,
+                no_speech_threshold=0.6
+            )
+        except Exception as transcribe_error:
+            # 임시 WebM 파일 삭제
+            if os.path.exists(webm_path):
+                os.unlink(webm_path)
+            raise HTTPException(status_code=500, detail=f"STT 처리 오류: {str(transcribe_error)}")
 
         # 임시 WebM 파일 삭제
         if os.path.exists(webm_path):
@@ -814,7 +869,7 @@ async def websocket_streaming_stt(websocket: WebSocket):
     - 수신: `{"type": "partial_result", "text": "부분 결과", "confidence": 0.95, "is_final": false}`
     - 수신: `{"type": "final_result", "text": "최종 결과", "confidence": 0.98, "is_final": true}`
 
-    **지원 오디오 형식:** WAV, MP3, M4A, WebM
+    **지원 오디오 형식:** WebM (Opus 코덱)
     """
     await manager.connect(websocket)
     print(f"🎤 실시간 STT 클라이언트 연결: {websocket.client}")
@@ -970,16 +1025,20 @@ async def websocket_chat(websocket: WebSocket):
 
                         # TTS 변환
                         if TTS_AVAILABLE and tts_model:
-                            audio_filename = f"audio_{uuid.uuid4().hex}.wav"
-                            audio_path = f"static/audio/{audio_filename}"
+                            wav_filename = f"audio_{uuid.uuid4().hex}.wav"
+                            wav_path = f"static/audio/{wav_filename}"
 
                             tts_model.tts_to_file(
                                 text=response_text,
                                 speaker_id=0,
-                                output_path=audio_path,
+                                output_path=wav_path,
                                 speed=2.0,
                                 quiet=True
                             )
+
+                            # WAV → WebM 변환
+                            audio_path = convert_wav_to_webm(wav_path)
+                            audio_filename = os.path.basename(audio_path)
 
                             # 시스템 응답 전송
                             await manager.send_personal_message(json.dumps({
@@ -1038,16 +1097,20 @@ async def websocket_chat(websocket: WebSocket):
                 try:
                     text = message_data.get("text", "")
                     if text and TTS_AVAILABLE and tts_model:
-                        audio_filename = f"audio_{uuid.uuid4().hex}.wav"
-                        audio_path = f"static/audio/{audio_filename}"
+                        wav_filename = f"audio_{uuid.uuid4().hex}.wav"
+                        wav_path = f"static/audio/{wav_filename}"
 
                         tts_model.tts_to_file(
                             text=text,
                             speaker_id=0,
-                            output_path=audio_path,
+                            output_path=wav_path,
                             speed=2.0,
                             quiet=True
                         )
+
+                        # WAV → WebM 변환
+                        audio_path = convert_wav_to_webm(wav_path)
+                        audio_filename = os.path.basename(audio_path)
 
                         # 자동 대화 메시지로 전송
                         await manager.send_personal_message(json.dumps({
