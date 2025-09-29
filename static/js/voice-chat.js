@@ -739,7 +739,7 @@ class VoiceChatApp {
             // 신뢰도가 낮으면 경고 표시
             if (confidence < 0.6) {
                 this.addMessage('system',
-                    `⚠️ 음성 인식 신뢰도가 낮습니다 (${Math.round(confidence * 100)}%). 다시 말씀해 주세요.`,
+                    `⚠️ 음성 인식 신뢰도가 낮습니다 (${Math.round(confidence * 100)}%).`,
                     new Date().toISOString()
                 );
             }

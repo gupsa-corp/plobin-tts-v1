@@ -11,7 +11,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from models.model_manager import model_manager
 from websocket.connection_manager import manager
-from utils.audio_processing import cleanup_temp_audio, generate_audio_filename, generate_wav_filename, convert_wav_to_webm
+from utils.audio_processing import cleanup_temp_audio, generate_audio_filename
 from config.settings import AUDIO_DIR
 
 # 자동 대화 관련 임포트
@@ -88,18 +88,14 @@ async def _process_audio_message(websocket: WebSocket, message_data: dict):
         response_text = _generate_response(user_text)
 
         # TTS 변환
-        wav_filename = generate_wav_filename()
-        wav_path = os.path.join(AUDIO_DIR, wav_filename)
+        audio_filename = generate_audio_filename()
+        audio_path = os.path.join(AUDIO_DIR, audio_filename)
 
         model_manager.synthesize_speech(
             text=response_text,
-            output_path=wav_path,
+            output_path=audio_path,
             speed=2.0
         )
-
-        # WAV → WebM 변환
-        audio_path = convert_wav_to_webm(wav_path)
-        audio_filename = os.path.basename(audio_path)
 
         # 시스템 응답 전송
         await manager.send_personal_message(json.dumps({
@@ -158,18 +154,14 @@ async def _handle_auto_chat_message(websocket: WebSocket, message_data: dict):
     try:
         text = message_data.get("text", "")
         if text:
-            wav_filename = generate_wav_filename()
-            wav_path = os.path.join(AUDIO_DIR, wav_filename)
+            audio_filename = generate_audio_filename()
+            audio_path = os.path.join(AUDIO_DIR, audio_filename)
 
             model_manager.synthesize_speech(
                 text=text,
-                output_path=wav_path,
+                output_path=audio_path,
                 speed=2.0
             )
-
-            # WAV → WebM 변환
-            audio_path = convert_wav_to_webm(wav_path)
-            audio_filename = os.path.basename(audio_path)
 
             # 자동 대화 메시지로 전송
             await manager.send_personal_message(json.dumps({
@@ -202,4 +194,4 @@ def _generate_response(user_text: str) -> str:
         now = datetime.datetime.now()
         return f"현재 시간은 {now.strftime('%H시 %M분')}입니다."
     else:
-        return "네, 잘 들었습니다. 다른 질문이 있으시면 말씀해 주세요."
+        return "네, 잘 들었습니다."

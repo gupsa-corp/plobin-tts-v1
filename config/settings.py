@@ -20,7 +20,7 @@ DEFAULT_TTS_DEVICE = "auto"
 STT_MODEL_SIZE = "base"  # base, small, medium, large
 STT_LANGUAGE = "ko"  # 한국어 기본값
 STT_TEMPERATURE = 0.0
-STT_INITIAL_PROMPT = "안녕하세요. 한국어로 말씀해 주세요."
+STT_INITIAL_PROMPT = ""
 
 # 오디오 전처리 설정
 AUDIO_SAMPLE_RATE = 16000

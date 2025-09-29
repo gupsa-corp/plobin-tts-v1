@@ -222,7 +222,7 @@ async def batch_text_to_speech(request: BatchTTSRequest):
                     filename, file_path = audio_files[0]
                     return FileResponse(
                         path=file_path,
-                        media_type="audio/webm",
+                        media_type="audio/wav",
                         filename=filename
                     )
 
