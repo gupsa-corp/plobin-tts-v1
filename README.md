@@ -75,7 +75,66 @@ python test_korean_model.py
 
 ## 🎯 사용법
 
-### GUI 애플리케이션 (추천)
+### 🌐 웹 음성 대화 시스템 (NEW! 추천)
+```bash
+# 서버 시작
+./run_web.sh
+
+# 또는 직접 실행
+source korean_tts_env/bin/activate
+python web_voice_chat.py
+```
+
+**접속:**
+- 웹 앱: http://localhost:8001
+- API 문서: http://localhost:8001/docs
+
+#### 🎤 WebSocket STT 사용법
+
+**1. WebSocket 연결**
+```javascript
+const ws = new WebSocket('ws://localhost:8001/ws/stt');
+```
+
+**2. 음성 데이터 전송**
+```javascript
+ws.send(JSON.stringify({
+    type: 'audio',
+    data: audioBase64,  // Base64 인코딩된 WAV/MP3/M4A
+    timestamp: new Date().toISOString()
+}));
+```
+
+**3. 결과 수신**
+```javascript
+ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === 'stt_result') {
+        console.log('텍스트:', data.text);
+        console.log('신뢰도:', data.confidence);
+    }
+};
+```
+
+**4. 연결 상태 확인**
+```javascript
+// Ping 전송
+ws.send(JSON.stringify({ type: 'ping' }));
+
+// Pong 수신 확인
+ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === 'pong') {
+        console.log('연결 정상');
+    }
+};
+```
+
+**지원 엔드포인트:**
+- `/ws/stt` - 실시간 STT 전용
+- `/ws/chat` - STT + TTS + 대화 시스템
+
+### GUI 애플리케이션
 ```bash
 source korean_tts_env/bin/activate
 python korean_tts_gui_final.py
@@ -94,18 +153,6 @@ python korean_tts.py --text "안녕하세요, 한국어 TTS 테스트입니다" 
 
 # 속도 조절
 python korean_tts.py --text "빠른 속도로 말하기" --speed 1.5 --output fast.wav
-```
-
-### API 서버
-```bash
-# 서버 시작
-python korean_tts_api.py
-
-# API 호출 예시
-curl -X POST "http://localhost:8000/tts" \
-     -H "Content-Type: application/json" \
-     -d '{"text": "안녕하세요", "speed": 1.0}' \
-     --output output.wav
 ```
 
 ## 📁 주요 파일 설명

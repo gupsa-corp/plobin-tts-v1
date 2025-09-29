@@ -25,7 +25,22 @@ class VoiceChatApp {
             speedValue: document.getElementById('speed-value'),
             clearChat: document.getElementById('clear-chat'),
             testText: document.getElementById('test-text'),
-            testTts: document.getElementById('test-tts')
+            testTts: document.getElementById('test-tts'),
+            // 자동 대화 관련 요소들
+            autoChatStatus: document.getElementById('auto-chat-status'),
+            autoChatTheme: document.getElementById('auto-chat-theme'),
+            autoChatInterval: document.getElementById('auto-chat-interval'),
+            autoIntervalValue: document.getElementById('auto-interval-value'),
+            startAutoChat: document.getElementById('start-auto-chat'),
+            stopAutoChat: document.getElementById('stop-auto-chat')
+        };
+
+        // 자동 대화 상태 관리
+        this.autoChatState = {
+            isActive: false,
+            sessionId: null,
+            theme: 'casual',
+            interval: 30
         };
 
         this.init();
@@ -62,6 +77,21 @@ class VoiceChatApp {
 
         // TTS 테스트
         this.elements.testTts.addEventListener('click', () => this.testTTS());
+
+        // 자동 대화 이벤트 리스너들
+        this.elements.startAutoChat.addEventListener('click', () => this.startAutoChat());
+        this.elements.stopAutoChat.addEventListener('click', () => this.stopAutoChat());
+
+        // 자동 대화 간격 슬라이더
+        this.elements.autoChatInterval.addEventListener('input', (e) => {
+            this.elements.autoIntervalValue.textContent = e.target.value;
+            this.autoChatState.interval = parseInt(e.target.value);
+        });
+
+        // 자동 대화 주제 변경
+        this.elements.autoChatTheme.addEventListener('change', (e) => {
+            this.autoChatState.theme = e.target.value;
+        });
 
         // 키보드 단축키 (스페이스바로 녹음)
         document.addEventListener('keydown', (e) => {
@@ -158,6 +188,23 @@ class VoiceChatApp {
                 break;
             case 'system_response':
                 this.addMessage('system', data.text, data.timestamp, data.audio_url);
+                break;
+            case 'auto_chat_message':
+                // 자동 대화 메시지를 TTS 처리 요청
+                this.handleAutoMessage(data);
+                break;
+            case 'auto_message_response':
+                // TTS 처리된 자동 대화 메시지 표시
+                this.addMessage('auto', data.text, data.timestamp, data.audio_url);
+                break;
+            case 'auto_chat_started':
+                this.handleAutoChatStarted(data);
+                break;
+            case 'auto_chat_stopped':
+                this.handleAutoChatStopped(data);
+                break;
+            case 'auto_chat_settings_updated':
+                this.handleAutoChatSettingsUpdated(data);
                 break;
             case 'error':
                 this.addMessage('system', `오류: ${data.message}`, new Date().toISOString());
@@ -374,6 +421,116 @@ class VoiceChatApp {
             this.elements.testTts.disabled = false;
             this.elements.testTts.textContent = '음성 변환';
         }
+    }
+
+    // 자동 대화 관련 함수들
+    async startAutoChat() {
+        if (!this.isConnected) {
+            alert('WebSocket이 연결되지 않았습니다.');
+            return;
+        }
+
+        try {
+            const message = {
+                type: 'auto_chat_start',
+                theme: this.autoChatState.theme,
+                interval: this.autoChatState.interval
+            };
+
+            this.websocket.send(JSON.stringify(message));
+            console.log('🤖 자동 대화 시작 요청 전송:', message);
+
+        } catch (error) {
+            console.error('❌ 자동 대화 시작 실패:', error);
+            alert('자동 대화 시작에 실패했습니다.');
+        }
+    }
+
+    async stopAutoChat() {
+        if (!this.isConnected) {
+            return;
+        }
+
+        try {
+            const message = {
+                type: 'auto_chat_stop'
+            };
+
+            this.websocket.send(JSON.stringify(message));
+            console.log('🛑 자동 대화 중지 요청 전송');
+
+        } catch (error) {
+            console.error('❌ 자동 대화 중지 실패:', error);
+        }
+    }
+
+    handleAutoMessage(data) {
+        // 자동 대화 메시지를 TTS 처리를 위해 다시 전송
+        const message = {
+            type: 'auto_chat_message',
+            text: data.text,
+            timestamp: data.timestamp,
+            session_id: data.session_id,
+            theme: data.theme
+        };
+
+        this.websocket.send(JSON.stringify(message));
+    }
+
+    handleAutoChatStarted(data) {
+        console.log('✅ 자동 대화 시작됨:', data);
+
+        this.autoChatState.isActive = true;
+        this.autoChatState.sessionId = data.session_id;
+
+        // UI 업데이트
+        this.elements.autoChatStatus.textContent = '활성';
+        this.elements.autoChatStatus.className = 'status online';
+        this.elements.startAutoChat.disabled = true;
+        this.elements.stopAutoChat.disabled = false;
+
+        // 자동 대화 패널 스타일 변경
+        const panel = document.querySelector('.auto-chat-panel');
+        if (panel) {
+            panel.classList.add('auto-chat-active');
+        }
+
+        this.addMessage('system', `🤖 자동 대화가 시작되었습니다. (주제: ${data.theme}, 간격: ${data.interval}초)`, new Date().toISOString());
+    }
+
+    handleAutoChatStopped(data) {
+        console.log('🛑 자동 대화 중지됨:', data);
+
+        this.autoChatState.isActive = false;
+        this.autoChatState.sessionId = null;
+
+        // UI 업데이트
+        this.elements.autoChatStatus.textContent = '비활성';
+        this.elements.autoChatStatus.className = 'status offline';
+        this.elements.startAutoChat.disabled = false;
+        this.elements.stopAutoChat.disabled = true;
+
+        // 자동 대화 패널 스타일 변경
+        const panel = document.querySelector('.auto-chat-panel');
+        if (panel) {
+            panel.classList.remove('auto-chat-active');
+        }
+
+        this.addMessage('system', '🛑 자동 대화가 중지되었습니다.', new Date().toISOString());
+    }
+
+    handleAutoChatSettingsUpdated(data) {
+        console.log('⚙️ 자동 대화 설정 업데이트:', data);
+
+        this.autoChatState.theme = data.theme;
+        this.autoChatState.interval = data.interval;
+
+        // UI 반영
+        this.elements.autoChatTheme.value = data.theme;
+        this.elements.autoChatInterval.value = data.interval;
+        this.elements.autoIntervalValue.textContent = data.interval;
+
+        this.addMessage('system', `⚙️ 자동 대화 설정이 변경되었습니다. (주제: ${data.theme}, 간격: ${data.interval}초)`, new Date().toISOString());
     }
 }
 

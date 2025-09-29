@@ -41,6 +41,10 @@ try:
 except ImportError:
     STT_AVAILABLE = False
 
+# 자동 대화 관련 임포트
+from auto_chat_manager import auto_chat_manager
+from conversation_patterns import conversation_patterns
+
 # FastAPI 앱 생성
 app = FastAPI(
     title="음성 대화 시스템 API",
@@ -80,6 +84,21 @@ class ChatMessage(BaseModel):
     text: str
     timestamp: str
     audio_url: Optional[str] = None
+
+# 자동 대화 관련 모델
+class AutoChatStartRequest(BaseModel):
+    theme: str = "casual"
+    interval: int = 30  # 초 단위
+
+class AutoChatResponse(BaseModel):
+    success: bool
+    session_id: Optional[str] = None
+    message: Optional[str] = None
+    error: Optional[str] = None
+
+class AutoChatUpdateRequest(BaseModel):
+    theme: Optional[str] = None
+    interval: Optional[int] = None
 
 # 모델 초기화
 async def initialize_models():
@@ -241,6 +260,127 @@ async def get_supported_languages():
         ]
     }
 
+@app.get("/api/websocket/info",
+         summary="WebSocket 엔드포인트 정보",
+         description="사용 가능한 WebSocket 엔드포인트들과 사용법을 반환합니다.")
+async def get_websocket_info():
+    """WebSocket 엔드포인트 정보"""
+    return {
+        "endpoints": [
+            {
+                "path": "/ws/stt",
+                "name": "실시간 STT",
+                "description": "음성을 실시간으로 텍스트로 변환",
+                "message_format": {
+                    "send": {
+                        "type": "audio",
+                        "data": "<base64_encoded_audio>",
+                        "timestamp": "optional_timestamp"
+                    },
+                    "receive": {
+                        "type": "stt_result",
+                        "text": "변환된 텍스트",
+                        "confidence": 0.95,
+                        "timestamp": "timestamp"
+                    }
+                },
+                "supported_audio_formats": ["WAV", "MP3", "M4A"],
+                "example_js_code": """
+// WebSocket 연결
+const ws = new WebSocket('ws://localhost:8001/ws/stt');
+
+// 음성 데이터 전송 (Base64 인코딩된 오디오)
+ws.send(JSON.stringify({
+    type: 'audio',
+    data: audioBase64,
+    timestamp: new Date().toISOString()
+}));
+
+// 결과 수신
+ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === 'stt_result') {
+        console.log('변환된 텍스트:', data.text);
+        console.log('신뢰도:', data.confidence);
+    }
+};
+                """
+            },
+            {
+                "path": "/ws/chat",
+                "name": "실시간 음성 대화",
+                "description": "STT + TTS + 대화 시스템 통합",
+                "message_format": {
+                    "send": {
+                        "type": "audio | auto_chat_start | auto_chat_stop | auto_chat_message",
+                        "data": "message_data",
+                        "theme": "optional_for_auto_chat",
+                        "interval": "optional_for_auto_chat"
+                    },
+                    "receive": {
+                        "type": "user_message | system_response | auto_message_response | error",
+                        "text": "메시지 내용",
+                        "audio_url": "음성 파일 URL (해당하는 경우)",
+                        "timestamp": "timestamp"
+                    }
+                },
+                "features": [
+                    "실시간 음성 인식 (STT)",
+                    "음성 합성 (TTS)",
+                    "자동 대화 시스템",
+                    "다양한 대화 주제 지원"
+                ]
+            }
+        ],
+        "common_message_types": {
+            "ping": "연결 상태 확인 (모든 WebSocket에서 지원)",
+            "pong": "ping에 대한 응답"
+        },
+        "connection_example": "ws://localhost:8001/ws/stt 또는 ws://localhost:8001/ws/chat"
+    }
+
+# 자동 대화 API 엔드포인트들
+@app.get("/api/auto-chat/themes",
+         summary="자동 대화 주제 목록",
+         description="사용 가능한 자동 대화 주제들을 반환합니다.")
+async def get_auto_chat_themes():
+    """자동 대화 주제 목록"""
+    themes = conversation_patterns.get_all_themes()
+    theme_info = {
+        "casual": "일상 대화",
+        "weather": "날씨 이야기",
+        "educational": "학습 도우미",
+        "entertainment": "재미있는 대화",
+        "motivational": "동기부여",
+        "questions": "질문과 답변",
+        "greeting": "인사말"
+    }
+
+    return {
+        "themes": [
+            {"code": theme, "name": theme_info.get(theme, theme)}
+            for theme in themes
+        ]
+    }
+
+@app.get("/api/auto-chat/sessions",
+         summary="자동 대화 세션 정보",
+         description="현재 활성화된 자동 대화 세션들의 정보를 반환합니다.")
+async def get_auto_chat_sessions():
+    """자동 대화 세션 정보 조회"""
+    return auto_chat_manager.get_all_sessions_info()
+
+@app.get("/api/auto-chat/sessions/{session_id}",
+         summary="특정 자동 대화 세션 정보",
+         description="특정 자동 대화 세션의 상세 정보를 반환합니다.")
+async def get_auto_chat_session(session_id: str):
+    """특정 자동 대화 세션 정보 조회"""
+    session_info = auto_chat_manager.get_session_info(session_id)
+    if session_info:
+        return session_info
+    else:
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+
 # WebSocket 연결 관리
 class ConnectionManager:
     def __init__(self):
@@ -261,6 +401,96 @@ class ConnectionManager:
             await connection.send_text(message)
 
 manager = ConnectionManager()
+
+# WebSocket STT 전용 응답 모델 (Swagger용)
+class WebSocketSTTMessage(BaseModel):
+    """WebSocket STT 메시지 모델"""
+    type: str  # "audio", "text"
+    data: Optional[str] = None  # Base64 인코딩된 오디오 데이터 또는 텍스트
+    timestamp: Optional[str] = None
+
+class WebSocketSTTResponse(BaseModel):
+    """WebSocket STT 응답 모델"""
+    type: str  # "stt_result", "error"
+    text: Optional[str] = None  # 변환된 텍스트
+    confidence: Optional[float] = None  # 신뢰도 (0-1)
+    error: Optional[str] = None
+    timestamp: Optional[str] = None
+
+@app.websocket("/ws/stt")
+async def websocket_stt(websocket: WebSocket):
+    """실시간 STT 전용 WebSocket
+
+    음성 데이터를 실시간으로 받아서 텍스트로 변환합니다.
+
+    **메시지 형식:**
+    - 송신: `{"type": "audio", "data": "<base64_audio>", "timestamp": "..."}`
+    - 수신: `{"type": "stt_result", "text": "변환된 텍스트", "confidence": 0.95, "timestamp": "..."}`
+
+    **지원 오디오 형식:** WAV, MP3, M4A
+    """
+    await manager.connect(websocket)
+    try:
+        while True:
+            # 클라이언트로부터 메시지 수신
+            data = await websocket.receive_text()
+            message_data = json.loads(data)
+
+            if message_data["type"] == "audio":
+                # 음성 데이터를 텍스트로 변환
+                try:
+                    if not STT_AVAILABLE or not stt_model:
+                        await manager.send_personal_message(json.dumps({
+                            "type": "error",
+                            "error": "STT 서비스를 사용할 수 없습니다",
+                            "timestamp": message_data.get("timestamp", "")
+                        }), websocket)
+                        continue
+
+                    # Base64 오디오 디코딩
+                    audio_data = base64.b64decode(message_data["data"])
+
+                    # STT 처리
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+                        temp_file.write(audio_data)
+                        temp_path = temp_file.name
+
+                    result = stt_model.transcribe(temp_path)
+                    transcribed_text = result["text"].strip()
+
+                    # 신뢰도 계산 (Whisper는 세그먼트별 확률 제공)
+                    confidence = 0.0
+                    if "segments" in result and result["segments"]:
+                        confidence = sum(seg.get("avg_logprob", 0) for seg in result["segments"]) / len(result["segments"])
+                        confidence = max(0, min(1, (confidence + 1) / 2))  # -1~0 범위를 0~1로 변환
+
+                    # 임시 파일 삭제
+                    os.unlink(temp_path)
+
+                    # STT 결과 전송
+                    await manager.send_personal_message(json.dumps({
+                        "type": "stt_result",
+                        "text": transcribed_text,
+                        "confidence": round(confidence, 3),
+                        "timestamp": message_data.get("timestamp", "")
+                    }), websocket)
+
+                except Exception as e:
+                    await manager.send_personal_message(json.dumps({
+                        "type": "error",
+                        "error": f"STT 처리 오류: {str(e)}",
+                        "timestamp": message_data.get("timestamp", "")
+                    }), websocket)
+
+            elif message_data["type"] == "ping":
+                # 연결 상태 확인
+                await manager.send_personal_message(json.dumps({
+                    "type": "pong",
+                    "timestamp": message_data.get("timestamp", "")
+                }), websocket)
+
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
 @app.websocket("/ws/chat")
 async def websocket_chat(websocket: WebSocket):
@@ -295,6 +525,9 @@ async def websocket_chat(websocket: WebSocket):
                             "timestamp": message_data.get("timestamp", "")
                         }), websocket)
 
+                        # 자동 대화 매니저에 사용자 입력 알림
+                        await auto_chat_manager.handle_user_input(websocket, user_text)
+
                         # 간단한 응답 생성 (실제로는 AI 모델 연동 가능)
                         response_text = generate_response(user_text)
 
@@ -325,7 +558,79 @@ async def websocket_chat(websocket: WebSocket):
                         "message": f"처리 오류: {str(e)}"
                     }), websocket)
 
+            elif message_data["type"] == "auto_chat_start":
+                # 자동 대화 시작 요청
+                try:
+                    theme = message_data.get("theme", "casual")
+                    interval = message_data.get("interval", 30)
+
+                    session_id = await auto_chat_manager.start_auto_chat(websocket, theme, interval)
+
+                    await manager.send_personal_message(json.dumps({
+                        "type": "auto_chat_started",
+                        "session_id": session_id,
+                        "theme": theme,
+                        "interval": interval,
+                        "message": "자동 대화가 시작되었습니다."
+                    }), websocket)
+
+                except Exception as e:
+                    await manager.send_personal_message(json.dumps({
+                        "type": "error",
+                        "message": f"자동 대화 시작 오류: {str(e)}"
+                    }), websocket)
+
+            elif message_data["type"] == "auto_chat_stop":
+                # 자동 대화 중지 요청
+                try:
+                    stopped = await auto_chat_manager.stop_auto_chat_for_websocket(websocket)
+
+                    await manager.send_personal_message(json.dumps({
+                        "type": "auto_chat_stopped",
+                        "message": "자동 대화가 중지되었습니다." if stopped else "활성 자동 대화가 없습니다."
+                    }), websocket)
+
+                except Exception as e:
+                    await manager.send_personal_message(json.dumps({
+                        "type": "error",
+                        "message": f"자동 대화 중지 오류: {str(e)}"
+                    }), websocket)
+
+            elif message_data["type"] == "auto_chat_message":
+                # 자동 대화 메시지를 TTS로 변환
+                try:
+                    text = message_data.get("text", "")
+                    if text and TTS_AVAILABLE and tts_model:
+                        audio_filename = f"audio_{uuid.uuid4().hex}.wav"
+                        audio_path = f"static/audio/{audio_filename}"
+
+                        tts_model.tts_to_file(
+                            text=text,
+                            speaker_id=0,
+                            output_path=audio_path,
+                            speed=1.0,
+                            quiet=True
+                        )
+
+                        # 자동 대화 메시지로 전송
+                        await manager.send_personal_message(json.dumps({
+                            "type": "auto_message_response",
+                            "text": text,
+                            "audio_url": f"/static/audio/{audio_filename}",
+                            "timestamp": message_data.get("timestamp", ""),
+                            "session_id": message_data.get("session_id", ""),
+                            "theme": message_data.get("theme", "casual")
+                        }), websocket)
+
+                except Exception as e:
+                    await manager.send_personal_message(json.dumps({
+                        "type": "error",
+                        "message": f"자동 대화 TTS 오류: {str(e)}"
+                    }), websocket)
+
     except WebSocketDisconnect:
+        # 연결이 끊어질 때 자동 대화도 정리
+        await auto_chat_manager.stop_auto_chat_for_websocket(websocket)
         manager.disconnect(websocket)
 
 def generate_response(user_text: str) -> str:
