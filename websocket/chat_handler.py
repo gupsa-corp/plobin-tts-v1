@@ -94,7 +94,7 @@ async def _process_audio_message(websocket: WebSocket, message_data: dict):
         model_manager.synthesize_speech(
             text=response_text,
             output_path=audio_path,
-            speed=1.0
+            speed=2.0
         )
 
         # 시스템 응답 전송
@@ -160,7 +160,7 @@ async def _handle_auto_chat_message(websocket: WebSocket, message_data: dict):
             model_manager.synthesize_speech(
                 text=text,
                 output_path=audio_path,
-                speed=1.0
+                speed=2.0
             )
 
             # 자동 대화 메시지로 전송

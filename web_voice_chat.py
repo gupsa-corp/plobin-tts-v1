@@ -74,7 +74,7 @@ connected_clients = []
 class TTSRequest(BaseModel):
     text: str
     language: str = "KR"
-    speed: float = 1.0
+    speed: float = 2.0
     device: str = "auto"
 
 class TTSResponse(BaseModel):
@@ -977,7 +977,7 @@ async def websocket_chat(websocket: WebSocket):
                                 text=response_text,
                                 speaker_id=0,
                                 output_path=audio_path,
-                                speed=1.0,
+                                speed=2.0,
                                 quiet=True
                             )
 
@@ -1045,7 +1045,7 @@ async def websocket_chat(websocket: WebSocket):
                             text=text,
                             speaker_id=0,
                             output_path=audio_path,
-                            speed=1.0,
+                            speed=2.0,
                             quiet=True
                         )
 

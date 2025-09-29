@@ -19,7 +19,7 @@ from config.settings import AUDIO_DIR
 class TTSRequest(BaseModel):
     text: str
     language: str = "KR"
-    speed: float = 1.0
+    speed: float = 2.0
     device: str = "auto"
 
 class TTSResponse(BaseModel):
@@ -39,7 +39,7 @@ class BatchTTSRequest(BaseModel):
     texts: list[str]
     language: str = "KR"
     speaker_id: int = 0
-    speed: float = 1.0
+    speed: float = 2.0
     format: str = "zip"
 
     class Config:
