@@ -39,6 +39,7 @@ try:
     import whisper
     import librosa
     import numpy as np
+    from pydub import AudioSegment
     STT_AVAILABLE = True
 except ImportError:
     STT_AVAILABLE = False
@@ -203,21 +204,21 @@ async def text_to_speech(request: TTSRequest):
 
 @app.post("/api/stt", response_model=STTResponse,
           summary="음성을 텍스트로 변환",
-          description="업로드된 음성 파일을 텍스트로 변환합니다.")
+          description="업로드된 음성 파일(webm, wav, mp3, m4a 등)을 텍스트로 변환합니다.")
 async def speech_to_text(audio_file: UploadFile = File(...)):
     """음성을 텍스트로 변환"""
     if not STT_AVAILABLE or not stt_model:
         raise HTTPException(status_code=503, detail="STT 서비스를 사용할 수 없습니다")
 
     try:
-        # 임시 파일로 저장
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
-            content = await audio_file.read()
-            temp_file.write(content)
-            temp_path = temp_file.name
+        # 오디오 데이터 읽기
+        content = await audio_file.read()
+
+        # 다양한 포맷을 wav로 변환
+        wav_path = convert_audio_to_wav(content, audio_file.filename or "")
 
         # 오디오 전처리 및 STT 변환
-        processed_audio = preprocess_audio(temp_path)
+        processed_audio = preprocess_audio(wav_path)
         result = stt_model.transcribe(
             processed_audio,
             language="ko",  # 한국어 기본 설정
@@ -230,8 +231,11 @@ async def speech_to_text(audio_file: UploadFile = File(...)):
             no_speech_threshold=0.6
         )
 
-        # 임시 파일 삭제
-        os.unlink(temp_path)
+        # 임시 파일들 삭제
+        if os.path.exists(wav_path):
+            os.unlink(wav_path)
+        if processed_audio != wav_path and os.path.exists(processed_audio):
+            os.unlink(processed_audio)
 
         return STTResponse(
             success=True,
@@ -298,7 +302,7 @@ async def get_websocket_info():
                         "timestamp": "timestamp"
                     }
                 },
-                "supported_audio_formats": ["WAV", "MP3", "M4A"],
+                "supported_audio_formats": ["WEBM", "WAV", "MP3", "M4A", "OGG"],
                 "example_js_code": """
 // WebSocket 연결
 const ws = new WebSocket('ws://localhost:8001/ws/stt');
@@ -464,13 +468,11 @@ async def websocket_stt(websocket: WebSocket):
                     # Base64 오디오 디코딩
                     audio_data = base64.b64decode(message_data["data"])
 
-                    # STT 처리
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
-                        temp_file.write(audio_data)
-                        temp_path = temp_file.name
+                    # 다양한 포맷을 wav로 변환
+                    wav_path = convert_audio_to_wav(audio_data)
 
                     # 오디오 전처리 및 STT 변환
-                    processed_audio = preprocess_audio(temp_path)
+                    processed_audio = preprocess_audio(wav_path)
                     result = stt_model.transcribe(
                         processed_audio,
                         language="ko",  # 한국어 기본 설정
@@ -490,8 +492,11 @@ async def websocket_stt(websocket: WebSocket):
                         confidence = sum(seg.get("avg_logprob", 0) for seg in result["segments"]) / len(result["segments"])
                         confidence = max(0, min(1, (confidence + 1) / 2))  # -1~0 범위를 0~1로 변환
 
-                    # 임시 파일 삭제
-                    os.unlink(temp_path)
+                    # 임시 파일들 삭제
+                    if os.path.exists(wav_path):
+                        os.unlink(wav_path)
+                    if processed_audio != wav_path and os.path.exists(processed_audio):
+                        os.unlink(processed_audio)
 
                     # STT 결과 전송
                     await manager.send_personal_message(json.dumps({
@@ -536,12 +541,11 @@ async def websocket_chat(websocket: WebSocket):
 
                     # STT 처리
                     if STT_AVAILABLE and stt_model:
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
-                            temp_file.write(audio_data)
-                            temp_path = temp_file.name
+                        # 다양한 포맷을 wav로 변환
+                        wav_path = convert_audio_to_wav(audio_data)
 
                         # 오디오 전처리 및 STT 변환
-                        processed_audio = preprocess_audio(temp_path)
+                        processed_audio = preprocess_audio(wav_path)
                         result = stt_model.transcribe(
                             processed_audio,
                             language="ko",  # 한국어 기본 설정
@@ -554,7 +558,12 @@ async def websocket_chat(websocket: WebSocket):
                             no_speech_threshold=0.6
                         )
                         user_text = result["text"].strip()
-                        os.unlink(temp_path)
+
+                        # 임시 파일들 삭제
+                        if os.path.exists(wav_path):
+                            os.unlink(wav_path)
+                        if processed_audio != wav_path and os.path.exists(processed_audio):
+                            os.unlink(processed_audio)
 
                         # 사용자 메시지 전송
                         await manager.send_personal_message(json.dumps({
@@ -670,6 +679,66 @@ async def websocket_chat(websocket: WebSocket):
         # 연결이 끊어질 때 자동 대화도 정리
         await auto_chat_manager.stop_auto_chat_for_websocket(websocket)
         manager.disconnect(websocket)
+
+def convert_audio_to_wav(audio_data: bytes, original_filename: str = "") -> str:
+    """다양한 오디오 포맷(webm, mp3, m4a 등)을 wav로 변환"""
+    try:
+        if not STT_AVAILABLE:
+            raise Exception("STT 라이브러리가 설치되지 않았습니다")
+
+        # 파일 확장자로 포맷 감지
+        format_hint = None
+        if original_filename:
+            ext = Path(original_filename).suffix.lower()
+            if ext in ['.webm', '.webm']:
+                format_hint = 'webm'
+            elif ext in ['.mp3']:
+                format_hint = 'mp3'
+            elif ext in ['.m4a', '.mp4']:
+                format_hint = 'mp4'
+            elif ext in ['.ogg']:
+                format_hint = 'ogg'
+
+        # 임시 파일로 저장
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.webm' if format_hint == 'webm' else '.tmp') as temp_input:
+            temp_input.write(audio_data)
+            temp_input_path = temp_input.name
+
+        # pydub로 오디오 로드 및 wav로 변환
+        try:
+            if format_hint == 'webm':
+                # webm 파일 처리
+                audio = AudioSegment.from_file(temp_input_path, format="webm")
+            else:
+                # 자동 감지로 로드
+                audio = AudioSegment.from_file(temp_input_path)
+        except Exception as e:
+            # pydub 실패 시 직접 librosa로 시도
+            print(f"pydub 변환 실패, librosa로 시도: {e}")
+            os.unlink(temp_input_path)
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_wav:
+                temp_wav.write(audio_data)
+                return temp_wav.name
+
+        # wav 형식으로 변환 (16kHz, mono)
+        audio = audio.set_frame_rate(16000).set_channels(1)
+
+        # wav 파일로 저장
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_wav:
+            audio.export(temp_wav.name, format="wav")
+            wav_path = temp_wav.name
+
+        # 원본 임시 파일 삭제
+        os.unlink(temp_input_path)
+
+        return wav_path
+
+    except Exception as e:
+        print(f"오디오 변환 오류: {e}")
+        # 변환 실패 시 원본 데이터를 wav로 저장
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_file:
+            temp_file.write(audio_data)
+            return temp_file.name
 
 def preprocess_audio(audio_path: str) -> str:
     """오디오 전처리: 노이즈 제거 및 정규화"""
