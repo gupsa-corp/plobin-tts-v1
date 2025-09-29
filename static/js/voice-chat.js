@@ -6,10 +6,12 @@
 class VoiceChatApp {
     constructor() {
         this.websocket = null;
+        this.streamingWebsocket = null;
         this.mediaRecorder = null;
         this.audioChunks = [];
         this.isRecording = false;
         this.isConnected = false;
+        this.isStreamingMode = true; // 기본적으로 스트리밍 모드 사용
 
         // DOM 요소들
         this.elements = {
@@ -55,8 +57,11 @@ class VoiceChatApp {
         // 모델 상태 확인
         await this.checkModelsStatus();
 
-        // WebSocket 연결
+        // WebSocket 연결 (기존 채팅용)
         this.connectWebSocket();
+
+        // 스트리밍 STT WebSocket 연결
+        this.connectStreamingWebSocket();
 
         // 마이크 권한 요청
         await this.requestMicrophoneAccess();
@@ -147,8 +152,7 @@ class VoiceChatApp {
             this.websocket.onopen = () => {
                 console.log('✅ WebSocket 연결됨');
                 this.isConnected = true;
-                this.elements.connectionStatus.textContent = '연결됨';
-                this.elements.connectionStatus.className = 'status online';
+                this.updateConnectionStatus();
             };
 
             this.websocket.onmessage = (event) => {
@@ -159,8 +163,7 @@ class VoiceChatApp {
             this.websocket.onclose = () => {
                 console.log('❌ WebSocket 연결 끊김');
                 this.isConnected = false;
-                this.elements.connectionStatus.textContent = '연결 끊김';
-                this.elements.connectionStatus.className = 'status offline';
+                this.updateConnectionStatus();
 
                 // 재연결 시도
                 setTimeout(() => this.connectWebSocket(), 3000);
@@ -168,13 +171,69 @@ class VoiceChatApp {
 
             this.websocket.onerror = (error) => {
                 console.error('❌ WebSocket 오류:', error);
-                this.elements.connectionStatus.textContent = '오류';
-                this.elements.connectionStatus.className = 'status offline';
+                this.updateConnectionStatus();
             };
 
         } catch (error) {
             console.error('❌ WebSocket 연결 실패:', error);
-            this.elements.connectionStatus.textContent = '연결 실패';
+            this.updateConnectionStatus();
+        }
+    }
+
+    connectStreamingWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/streaming-stt`;
+
+        console.log('🎤 스트리밍 STT WebSocket 연결 시도:', wsUrl);
+
+        try {
+            this.streamingWebsocket = new WebSocket(wsUrl);
+
+            this.streamingWebsocket.onopen = () => {
+                console.log('✅ 스트리밍 STT WebSocket 연결됨');
+                this.isStreamingConnected = true;
+                this.updateConnectionStatus();
+
+                // 스트림 시작 신호 전송
+                this.streamingWebsocket.send(JSON.stringify({
+                    type: 'start_stream',
+                    timestamp: new Date().toISOString()
+                }));
+            };
+
+            this.streamingWebsocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                this.handleStreamingSTTMessage(data);
+            };
+
+            this.streamingWebsocket.onclose = () => {
+                console.log('❌ 스트리밍 STT WebSocket 연결 끊김');
+                this.isStreamingConnected = false;
+                this.updateConnectionStatus();
+
+                // 재연결 시도
+                setTimeout(() => this.connectStreamingWebSocket(), 3000);
+            };
+
+            this.streamingWebsocket.onerror = (error) => {
+                console.error('❌ 스트리밍 STT WebSocket 오류:', error);
+                this.updateConnectionStatus();
+            };
+
+        } catch (error) {
+            console.error('❌ 스트리밍 STT WebSocket 연결 실패:', error);
+            this.updateConnectionStatus();
+        }
+    }
+
+    updateConnectionStatus() {
+        const isConnected = this.isConnected && (this.isStreamingConnected || !this.isStreamingMode);
+
+        if (isConnected) {
+            this.elements.connectionStatus.textContent = '연결됨';
+            this.elements.connectionStatus.className = 'status online';
+        } else {
+            this.elements.connectionStatus.textContent = '연결 끊김';
             this.elements.connectionStatus.className = 'status offline';
         }
     }
@@ -212,6 +271,31 @@ class VoiceChatApp {
         }
     }
 
+    handleStreamingSTTMessage(data) {
+        console.log('🎤 스트리밍 STT 수신:', data);
+
+        switch (data.type) {
+            case 'partial_result':
+                // 부분 결과 표시 (실시간으로 업데이트)
+                this.updatePartialTranscription(data.text, data.confidence);
+                break;
+            case 'final_result':
+                // 최종 결과 표시
+                this.finalizeTranscription(data.text, data.confidence, data.timestamp);
+                break;
+            case 'stream_started':
+                console.log('✅ 스트리밍 STT 시작됨');
+                break;
+            case 'stream_stopped':
+                console.log('🛑 스트리밍 STT 중지됨');
+                break;
+            case 'error':
+                console.error('❌ 스트리밍 STT 오류:', data.error);
+                this.addMessage('system', `STT 오류: ${data.error}`, new Date().toISOString());
+                break;
+        }
+    }
+
     async requestMicrophoneAccess() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -226,7 +310,8 @@ class VoiceChatApp {
     }
 
     async startRecording() {
-        if (this.isRecording || !this.isConnected) return;
+        const isConnected = this.isStreamingMode ? this.isStreamingConnected : this.isConnected;
+        if (this.isRecording || !isConnected) return;
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -238,24 +323,50 @@ class VoiceChatApp {
                 }
             });
 
-            this.mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'audio/webm;codecs=opus'
-            });
+            // 스트리밍 모드에서는 실시간 청크 전송
+            if (this.isStreamingMode && this.isStreamingConnected) {
+                this.mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm;codecs=opus',
+                    audioBitsPerSecond: 64000  // 압축을 위한 비트레이트 설정
+                });
 
-            this.audioChunks = [];
+                this.mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        // 실시간으로 WebM 청크 전송
+                        this.sendAudioChunk(event.data);
+                    }
+                };
 
-            this.mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    this.audioChunks.push(event.data);
-                }
-            };
+                // 500ms마다 WebM 청크 생성 (실시간 처리를 위해)
+                this.mediaRecorder.start(500);
+
+                // 부분 전사 결과 표시 준비
+                this.preparePartialTranscription();
+
+            } else {
+                // 기존 방식 (배치 처리) - WebM 전용
+                this.mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+
+                this.audioChunks = [];
+
+                this.mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        this.audioChunks.push(event.data);
+                    }
+                };
+
+                this.mediaRecorder.start();
+            }
 
             this.mediaRecorder.onstop = () => {
-                this.processRecording();
+                if (!this.isStreamingMode) {
+                    this.processRecording();
+                }
                 stream.getTracks().forEach(track => track.stop());
             };
 
-            this.mediaRecorder.start();
             this.isRecording = true;
 
             // UI 업데이트
@@ -263,7 +374,7 @@ class VoiceChatApp {
             this.elements.stopRecord.disabled = false;
             this.elements.recordingIndicator.classList.add('active');
 
-            console.log('🎤 녹음 시작');
+            console.log(`🎤 녹음 시작 (${this.isStreamingMode ? '스트리밍' : '배치'} 모드)`);
 
         } catch (error) {
             console.error('❌ 녹음 시작 실패:', error);
@@ -289,14 +400,14 @@ class VoiceChatApp {
         if (this.audioChunks.length === 0) return;
 
         try {
-            // 오디오 블롭 생성
-            const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+            // WebM 오디오 블롭 생성
+            const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm;codecs=opus' });
 
-            // WAV로 변환 (필요시)
+            // WebM 데이터를 Base64로 인코딩
             const arrayBuffer = await audioBlob.arrayBuffer();
             const base64Audio = this.arrayBufferToBase64(arrayBuffer);
 
-            // WebSocket으로 전송
+            // WebSocket으로 WebM 데이터 전송
             if (this.websocket && this.isConnected) {
                 const message = {
                     type: 'audio',
@@ -305,12 +416,12 @@ class VoiceChatApp {
                 };
 
                 this.websocket.send(JSON.stringify(message));
-                console.log('📤 오디오 데이터 전송');
+                console.log('📤 WebM 오디오 데이터 전송:', audioBlob.size, 'bytes');
             }
 
         } catch (error) {
-            console.error('❌ 녹음 처리 실패:', error);
-            this.addMessage('system', '음성 처리 중 오류가 발생했습니다.', new Date().toISOString());
+            console.error('❌ WebM 녹음 처리 실패:', error);
+            this.addMessage('system', 'WebM 음성 처리 중 오류가 발생했습니다.', new Date().toISOString());
         }
     }
 
@@ -531,6 +642,96 @@ class VoiceChatApp {
         this.elements.autoIntervalValue.textContent = data.interval;
 
         this.addMessage('system', `⚙️ 자동 대화 설정이 변경되었습니다. (주제: ${data.theme}, 간격: ${data.interval}초)`, new Date().toISOString());
+    }
+
+    // 새로운 스트리밍 STT 관련 메소드들
+    async sendAudioChunk(audioBlob) {
+        if (!this.streamingWebsocket || this.streamingWebsocket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+
+        try {
+            // WebM 오디오 블롭을 ArrayBuffer로 변환
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            const base64Audio = this.arrayBufferToBase64(arrayBuffer);
+
+            // 스트리밍 STT WebSocket으로 WebM 청크 전송
+            const message = {
+                type: 'audio_chunk',
+                data: base64Audio,
+                timestamp: new Date().toISOString(),
+                chunk_id: Date.now().toString()
+            };
+
+            this.streamingWebsocket.send(JSON.stringify(message));
+            console.log('📤 WebM 오디오 청크 전송:', audioBlob.size, 'bytes');
+
+        } catch (error) {
+            console.error('❌ WebM 오디오 청크 전송 실패:', error);
+        }
+    }
+
+    preparePartialTranscription() {
+        // 부분 전사 결과를 표시할 메시지 영역 준비
+        if (!this.partialMessageDiv) {
+            this.partialMessageDiv = document.createElement('div');
+            this.partialMessageDiv.className = 'message user-message partial-transcription';
+            this.partialMessageDiv.innerHTML = `
+                <div class="message-content">
+                    <span class="message-text partial-text">🎤 음성 인식 중...</span>
+                    <span class="message-time">실시간</span>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill"></div>
+                    </div>
+                </div>
+            `;
+            this.elements.chatMessages.appendChild(this.partialMessageDiv);
+            this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
+        }
+    }
+
+    updatePartialTranscription(text, confidence) {
+        if (!this.partialMessageDiv) {
+            this.preparePartialTranscription();
+        }
+
+        const textElement = this.partialMessageDiv.querySelector('.partial-text');
+        const confidenceBar = this.partialMessageDiv.querySelector('.confidence-fill');
+
+        if (text && text.trim()) {
+            textElement.textContent = `🎤 ${text}`;
+            textElement.className = 'message-text partial-text active';
+
+            // 신뢰도 바 업데이트
+            if (confidenceBar) {
+                confidenceBar.style.width = `${confidence * 100}%`;
+                confidenceBar.style.backgroundColor = confidence > 0.7 ? '#4CAF50' :
+                                                      confidence > 0.5 ? '#FF9800' : '#f44336';
+            }
+        }
+    }
+
+    finalizeTranscription(text, confidence, timestamp) {
+        if (this.partialMessageDiv) {
+            // 부분 전사 메시지 제거
+            this.partialMessageDiv.remove();
+            this.partialMessageDiv = null;
+        }
+
+        if (text && text.trim()) {
+            // 최종 결과를 일반 메시지로 표시
+            this.addMessage('user', text, timestamp);
+
+            // 신뢰도가 낮으면 경고 표시
+            if (confidence < 0.6) {
+                this.addMessage('system',
+                    `⚠️ 음성 인식 신뢰도가 낮습니다 (${Math.round(confidence * 100)}%). 다시 말씀해 주세요.`,
+                    new Date().toISOString()
+                );
+            }
+
+            console.log(`✅ 최종 전사: "${text}" (신뢰도: ${confidence.toFixed(3)})`);
+        }
     }
 }
 
