@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>마이크 권한 빠른 테스트</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>🎤 마이크 권한 테스트</h1>
+    <button id="testMic">마이크 테스트</button>
+    <button id="testWS">WebSocket 테스트</button>
+    <div id="log"></div>
+
+    <script>
+        function log(msg) {
+            document.getElementById('log').innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + msg + '</div>';
+        }
+
+        document.getElementById('testMic').onclick = async function() {
+            log('마이크 권한 요청 중...');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+                log('✅ 마이크 권한 성공!');
+
+                const audioTracks = stream.getAudioTracks();
+                if (audioTracks.length > 0) {
+                    log('오디오 트랙: ' + audioTracks[0].label);
+                }
+
+                stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                log('❌ 마이크 권한 실패: ' + error.message);
+            }
+        };
+
+        document.getElementById('testWS').onclick = function() {
+            log('WebSocket 연결 시도...');
+            const ws = new WebSocket('ws://localhost:6001/ws/chat');
+
+            ws.onopen = function() {
+                log('✅ WebSocket 연결 성공!');
+                ws.send(JSON.stringify({type: 'ping', timestamp: new Date().toISOString()}));
+            };
+
+            ws.onmessage = function(event) {
+                log('📨 수신: ' + event.data);
+            };
+
+            ws.onclose = function() {
+                log('❌ WebSocket 연결 종료');
+            };
+
+            ws.onerror = function(error) {
+                log('❌ WebSocket 오류: ' + error);
+            };
+        };
+    </script>
+</body>
+</html>

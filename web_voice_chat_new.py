@@ -59,6 +59,16 @@ async def startup_event():
 
     print("✅ 웹 음성 대화 시스템 초기화 완료")
 
+@app.get("/test", response_class=HTMLResponse)
+async def get_test_page():
+    """브라우저 테스트 페이지"""
+    test_file = "test_browser.html"
+    if os.path.exists(test_file):
+        with open(test_file, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    else:
+        return HTMLResponse(content="<h1>테스트 페이지를 찾을 수 없습니다</h1>", status_code=404)
+
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
     """메인 페이지"""

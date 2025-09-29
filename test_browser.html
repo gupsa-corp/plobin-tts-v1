@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>브라우저 테스트 - 음성 대화 시스템</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn:disabled { background: #6c757d; cursor: not-allowed; }
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .error { color: #dc3545; }
+        .success { color: #28a745; }
+        .info { color: #17a2b8; }
+    </style>
+</head>
+<body>
+    <h1>🔧 음성 대화 시스템 - 브라우저 테스트</h1>
+
+    <div class="test-section">
+        <h2>1. 브라우저 지원 확인</h2>
+        <div id="browser-support">
+            <p>MediaDevices API: <span id="mediadevices-support" class="status">확인 중...</span></p>
+            <p>WebSocket API: <span id="websocket-support" class="status">확인 중...</span></p>
+            <p>MediaRecorder API: <span id="mediarecorder-support" class="status">확인 중...</span></p>
+            <p>Web Audio API: <span id="webaudio-support" class="status">확인 중...</span></p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. 마이크 권한 테스트</h2>
+        <button id="test-microphone" class="btn">🎤 마이크 권한 테스트</button>
+        <p>상태: <span id="mic-status" class="status warning">테스트 필요</span></p>
+        <div id="mic-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. WebSocket 연결 테스트</h2>
+        <button id="test-websocket" class="btn">🔌 WebSocket 연결 테스트</button>
+        <p>상태: <span id="ws-status" class="status warning">테스트 필요</span></p>
+        <div id="ws-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. 오디오 녹음 및 전송 테스트</h2>
+        <button id="start-recording" class="btn">🎤 녹음 시작</button>
+        <button id="stop-recording" class="btn" disabled>⏹️ 녹음 중지</button>
+        <p>상태: <span id="recording-status" class="status warning">준비</span></p>
+        <div id="recording-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. TTS 테스트</h2>
+        <input type="text" id="tts-text" placeholder="테스트할 텍스트를 입력하세요..." value="안녕하세요, TTS 테스트입니다.">
+        <button id="test-tts" class="btn">🔊 TTS 테스트</button>
+        <p>상태: <span id="tts-status" class="status warning">테스트 필요</span></p>
+        <div id="tts-log" class="log"></div>
+    </div>
+
+    <script>
+        class BrowserTester {
+            constructor() {
+                this.websocket = null;
+                this.mediaRecorder = null;
+                this.audioChunks = [];
+                this.isRecording = false;
+
+                this.init();
+            }
+
+            init() {
+                this.checkBrowserSupport();
+                this.setupEventListeners();
+            }
+
+            log(elementId, message, type = 'info') {
+                const logElement = document.getElementById(elementId);
+                const timestamp = new Date().toLocaleTimeString();
+                const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+                logElement.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+
+            updateStatus(statusId, status, text) {
+                const element = document.getElementById(statusId);
+                element.className = `status ${status}`;
+                element.textContent = text;
+            }
+
+            checkBrowserSupport() {
+                // MediaDevices API
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    this.updateStatus('mediadevices-support', 'success', '지원됨');
+                } else {
+                    this.updateStatus('mediadevices-support', 'error', '지원되지 않음');
+                }
+
+                // WebSocket API
+                if (typeof WebSocket !== 'undefined') {
+                    this.updateStatus('websocket-support', 'success', '지원됨');
+                } else {
+                    this.updateStatus('websocket-support', 'error', '지원되지 않음');
+                }
+
+                // MediaRecorder API
+                if (typeof MediaRecorder !== 'undefined') {
+                    this.updateStatus('mediarecorder-support', 'success', '지원됨');
+                } else {
+                    this.updateStatus('mediarecorder-support', 'error', '지원되지 않음');
+                }
+
+                // Web Audio API
+                if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
+                    this.updateStatus('webaudio-support', 'success', '지원됨');
+                } else {
+                    this.updateStatus('webaudio-support', 'error', '지원되지 않음');
+                }
+            }
+
+            setupEventListeners() {
+                document.getElementById('test-microphone').addEventListener('click', () => this.testMicrophone());
+                document.getElementById('test-websocket').addEventListener('click', () => this.testWebSocket());
+                document.getElementById('start-recording').addEventListener('click', () => this.startRecording());
+                document.getElementById('stop-recording').addEventListener('click', () => this.stopRecording());
+                document.getElementById('test-tts').addEventListener('click', () => this.testTTS());
+            }
+
+            async testMicrophone() {
+                this.log('mic-log', '마이크 권한 요청 중...', 'info');
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            sampleRate: 16000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true
+                        }
+                    });
+
+                    this.log('mic-log', '✅ 마이크 권한 획득 성공!', 'success');
+                    this.updateStatus('mic-status', 'success', '권한 획득됨');
+
+                    // 스트림 정보 로그
+                    const audioTracks = stream.getAudioTracks();
+                    if (audioTracks.length > 0) {
+                        const track = audioTracks[0];
+                        this.log('mic-log', `오디오 트랙: ${track.label}`, 'info');
+                        this.log('mic-log', `설정: ${JSON.stringify(track.getSettings())}`, 'info');
+                    }
+
+                    // 스트림 정리
+                    stream.getTracks().forEach(track => track.stop());
+
+                } catch (error) {
+                    this.log('mic-log', `❌ 마이크 권한 실패: ${error.message}`, 'error');
+                    this.updateStatus('mic-status', 'error', '권한 거부됨');
+                }
+            }
+
+            async testWebSocket() {
+                this.log('ws-log', 'WebSocket 연결 시도...', 'info');
+
+                try {
+                    const wsUrl = `ws://${window.location.host}/ws/chat`;
+                    this.log('ws-log', `연결 URL: ${wsUrl}`, 'info');
+
+                    this.websocket = new WebSocket(wsUrl);
+
+                    this.websocket.onopen = () => {
+                        this.log('ws-log', '✅ WebSocket 연결 성공!', 'success');
+                        this.updateStatus('ws-status', 'success', '연결됨');
+
+                        // 핑 테스트
+                        const pingMessage = {
+                            type: 'ping',
+                            timestamp: new Date().toISOString()
+                        };
+                        this.websocket.send(JSON.stringify(pingMessage));
+                        this.log('ws-log', '핑 메시지 전송', 'info');
+                    };
+
+                    this.websocket.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.log('ws-log', `📨 수신: ${JSON.stringify(data)}`, 'success');
+                    };
+
+                    this.websocket.onclose = () => {
+                        this.log('ws-log', '❌ WebSocket 연결 종료', 'error');
+                        this.updateStatus('ws-status', 'error', '연결 종료됨');
+                    };
+
+                    this.websocket.onerror = (error) => {
+                        this.log('ws-log', `❌ WebSocket 오류: ${error}`, 'error');
+                        this.updateStatus('ws-status', 'error', '연결 오류');
+                    };
+
+                } catch (error) {
+                    this.log('ws-log', `❌ WebSocket 연결 실패: ${error.message}`, 'error');
+                    this.updateStatus('ws-status', 'error', '연결 실패');
+                }
+            }
+
+            async startRecording() {
+                if (this.isRecording) return;
+
+                this.log('recording-log', '녹음 시작 준비...', 'info');
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            sampleRate: 16000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true
+                        }
+                    });
+
+                    this.mediaRecorder = new MediaRecorder(stream, {
+                        mimeType: 'audio/webm;codecs=opus'
+                    });
+
+                    this.audioChunks = [];
+
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.audioChunks.push(event.data);
+                            this.log('recording-log', `데이터 청크: ${event.data.size} bytes`, 'info');
+                        }
+                    };
+
+                    this.mediaRecorder.onstop = () => {
+                        this.processRecording();
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    this.mediaRecorder.start();
+                    this.isRecording = true;
+
+                    document.getElementById('start-recording').disabled = true;
+                    document.getElementById('stop-recording').disabled = false;
+
+                    this.log('recording-log', '✅ 녹음 시작됨', 'success');
+                    this.updateStatus('recording-status', 'success', '녹음 중');
+
+                } catch (error) {
+                    this.log('recording-log', `❌ 녹음 시작 실패: ${error.message}`, 'error');
+                    this.updateStatus('recording-status', 'error', '녹음 실패');
+                }
+            }
+
+            stopRecording() {
+                if (!this.isRecording || !this.mediaRecorder) return;
+
+                this.mediaRecorder.stop();
+                this.isRecording = false;
+
+                document.getElementById('start-recording').disabled = false;
+                document.getElementById('stop-recording').disabled = true;
+
+                this.log('recording-log', '⏹️ 녹음 중지됨', 'info');
+                this.updateStatus('recording-status', 'warning', '처리 중');
+            }
+
+            async processRecording() {
+                if (this.audioChunks.length === 0) {
+                    this.log('recording-log', '❌ 녹음된 데이터가 없습니다', 'error');
+                    return;
+                }
+
+                try {
+                    const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                    this.log('recording-log', `오디오 블롭 생성: ${audioBlob.size} bytes`, 'info');
+
+                    // Base64 변환
+                    const arrayBuffer = await audioBlob.arrayBuffer();
+                    const base64Audio = this.arrayBufferToBase64(arrayBuffer);
+
+                    this.log('recording-log', `Base64 변환 완료: ${base64Audio.length} chars`, 'info');
+
+                    // WebSocket으로 전송
+                    if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                        const message = {
+                            type: 'audio',
+                            data: base64Audio,
+                            timestamp: new Date().toISOString()
+                        };
+
+                        this.websocket.send(JSON.stringify(message));
+                        this.log('recording-log', '📤 오디오 데이터 전송 완료', 'success');
+                        this.updateStatus('recording-status', 'success', '전송 완료');
+                    } else {
+                        this.log('recording-log', '❌ WebSocket이 연결되지 않았습니다', 'error');
+                        this.updateStatus('recording-status', 'error', 'WebSocket 오류');
+                    }
+
+                } catch (error) {
+                    this.log('recording-log', `❌ 녹음 처리 실패: ${error.message}`, 'error');
+                    this.updateStatus('recording-status', 'error', '처리 실패');
+                }
+            }
+
+            arrayBufferToBase64(buffer) {
+                const bytes = new Uint8Array(buffer);
+                let binary = '';
+                for (let i = 0; i < bytes.byteLength; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                return btoa(binary);
+            }
+
+            async testTTS() {
+                const text = document.getElementById('tts-text').value.trim();
+                if (!text) {
+                    alert('테스트할 텍스트를 입력해주세요.');
+                    return;
+                }
+
+                this.log('tts-log', 'TTS 요청 전송...', 'info');
+
+                try {
+                    const response = await fetch('/api/tts', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            text: text,
+                            language: 'KR',
+                            speed: 1.0,
+                            device: 'auto'
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        this.log('tts-log', '✅ TTS 변환 성공!', 'success');
+                        this.log('tts-log', `오디오 URL: ${result.audio_url}`, 'info');
+                        this.updateStatus('tts-status', 'success', '변환 성공');
+
+                        // 오디오 재생
+                        const audio = new Audio(result.audio_url);
+                        audio.play();
+                        this.log('tts-log', '🔊 오디오 재생 시작', 'success');
+
+                    } else {
+                        this.log('tts-log', `❌ TTS 실패: ${result.error}`, 'error');
+                        this.updateStatus('tts-status', 'error', '변환 실패');
+                    }
+
+                } catch (error) {
+                    this.log('tts-log', `❌ TTS 요청 실패: ${error.message}`, 'error');
+                    this.updateStatus('tts-status', 'error', '요청 실패');
+                }
+            }
+        }
+
+        // 테스터 시작
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🔧 브라우저 테스터 시작');
+            new BrowserTester();
+        });
+    </script>
+</body>
+</html>

@@ -29,7 +29,9 @@ async def handle_chat_websocket(websocket: WebSocket):
 
             message_type = message_data["type"]
 
-            if message_type == "audio":
+            if message_type == "ping":
+                await _handle_ping(websocket, message_data)
+            elif message_type == "audio":
                 await _process_audio_message(websocket, message_data)
             elif message_type == "auto_chat_start":
                 await _handle_auto_chat_start(websocket, message_data)
@@ -42,6 +44,20 @@ async def handle_chat_websocket(websocket: WebSocket):
         # 연결이 끊어질 때 자동 대화도 정리
         await auto_chat_manager.stop_auto_chat_for_websocket(websocket)
         manager.disconnect(websocket)
+
+async def _handle_ping(websocket: WebSocket, message_data: dict):
+    """핑 메시지 처리 - pong 응답"""
+    try:
+        await manager.send_personal_message(json.dumps({
+            "type": "pong",
+            "timestamp": message_data.get("timestamp", ""),
+            "server_time": json.dumps({"current_time": str(__import__('datetime').datetime.now())})
+        }), websocket)
+    except Exception as e:
+        await manager.send_personal_message(json.dumps({
+            "type": "error",
+            "message": f"핑 처리 오류: {str(e)}"
+        }), websocket)
 
 async def _process_audio_message(websocket: WebSocket, message_data: dict):
     """오디오 메시지 처리 (STT -> 응답 생성 -> TTS)"""
