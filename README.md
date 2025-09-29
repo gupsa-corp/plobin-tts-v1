@@ -71,7 +71,7 @@ python download_korean_model.py
 python test_korean_model.py
 ```
 
-성공하면 `korean_test.wav` 파일이 생성됩니다.
+성공하면 `korean_test.webm` 파일이 생성됩니다.
 
 ## 🎯 사용법
 
@@ -100,7 +100,7 @@ const ws = new WebSocket('ws://localhost:8001/ws/stt');
 ```javascript
 ws.send(JSON.stringify({
     type: 'audio',
-    data: audioBase64,  // Base64 인코딩된 WAV/MP3/M4A
+    data: audioBase64,  // Base64 인코딩된 WebM
     timestamp: new Date().toISOString()
 }));
 ```
@@ -149,10 +149,10 @@ python korean_tts_gui_final.py
 ### 명령행 도구
 ```bash
 # 기본 사용법
-python korean_tts.py --text "안녕하세요, 한국어 TTS 테스트입니다" --output hello.wav
+python korean_tts.py --text "안녕하세요, 한국어 TTS 테스트입니다" --output hello.webm
 
 # 속도 조절
-python korean_tts.py --text "빠른 속도로 말하기" --speed 1.5 --output fast.wav
+python korean_tts.py --text "빠른 속도로 말하기" --speed 1.5 --output fast.webm
 ```
 
 ## 📁 주요 파일 설명

@@ -186,12 +186,12 @@ class WhisperSTT:
                 "error": str(e)
             }
 
-    def transcribe_wav_bytes(self, wav_bytes: bytes, language: Optional[str] = None) -> Dict[str, Any]:
+    def transcribe_webm_bytes(self, webm_bytes: bytes, language: Optional[str] = None) -> Dict[str, Any]:
         """
-        WAV 바이트 데이터를 텍스트로 변환
+        WebM 바이트 데이터를 텍스트로 변환
 
         Args:
-            wav_bytes (bytes): WAV 형식의 오디오 바이트
+            webm_bytes (bytes): WebM 형식의 오디오 바이트
             language (str, optional): 언어 코드
 
         Returns:
@@ -199,8 +199,8 @@ class WhisperSTT:
         """
         try:
             # 임시 파일에 저장
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
-                temp_file.write(wav_bytes)
+            with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as temp_file:
+                temp_file.write(webm_bytes)
                 temp_path = temp_file.name
 
             # 변환 실행
@@ -212,7 +212,7 @@ class WhisperSTT:
             return result
 
         except Exception as e:
-            print(f"WAV bytes transcription error: {e}")
+            print(f"WebM bytes transcription error: {e}")
             return {
                 "text": "",
                 "language": "unknown",
@@ -364,21 +364,21 @@ class AudioProcessor:
     """
 
     @staticmethod
-    def wav_bytes_to_array(wav_bytes: bytes, target_sr: int = 16000) -> np.ndarray:
+    def webm_bytes_to_array(webm_bytes: bytes, target_sr: int = 16000) -> np.ndarray:
         """
-        WAV 바이트를 numpy 배열로 변환
+        WebM 바이트를 numpy 배열로 변환
 
         Args:
-            wav_bytes (bytes): WAV 파일 바이트
+            webm_bytes (bytes): WebM 파일 바이트
             target_sr (int): 목표 샘플레이트
 
         Returns:
             np.ndarray: 오디오 배열
         """
         try:
-            with io.BytesIO(wav_bytes) as wav_io:
-                with wave.open(wav_io, 'rb') as wav_file:
-                    # WAV 파일 정보
+            with io.BytesIO(webm_bytes) as webm_io:
+                with wave.open(webm_io, 'rb') as webm_file:
+                    # WebM 파일 정보
                     sample_rate = wav_file.getframerate()
                     n_channels = wav_file.getnchannels()
                     sample_width = wav_file.getsampwidth()
@@ -412,7 +412,7 @@ class AudioProcessor:
                     return audio_data
 
         except Exception as e:
-            print(f"WAV conversion error: {e}")
+            print(f"WebM conversion error: {e}")
             return np.array([], dtype=np.float32)
 
     @staticmethod

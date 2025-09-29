@@ -104,7 +104,7 @@ class TestAPIEndpoints:
         }
 
         with open(sample_audio_file, "rb") as f:
-            files = {"audio": ("test.wav", f, "audio/wav")}
+            files = {"audio": ("test.webm", f, "audio/webm")}
             response = client.post("/api/stt", files=files)
 
         assert response.status_code == 200
@@ -193,7 +193,7 @@ class TestAPIValidation:
         """파일 업로드 제한 테스트"""
         # 너무 큰 파일 (10MB)
         large_data = b"0" * (10 * 1024 * 1024)
-        files = {"audio": ("large.wav", large_data, "audio/wav")}
+        files = {"audio": ("large.webm", large_data, "audio/webm")}
 
         response = client.post("/api/stt", files=files)
         # 파일 크기 제한에 따라 413 또는 400 응답

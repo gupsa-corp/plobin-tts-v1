@@ -226,7 +226,7 @@ class TestAudioWorkflow:
             wav_supported = browser.execute_script("""
                 return typeof MediaRecorder !== 'undefined' &&
                        MediaRecorder.isTypeSupported &&
-                       MediaRecorder.isTypeSupported('audio/wav');
+                       MediaRecorder.isTypeSupported('audio/webm;codecs=opus');
             """)
             assert wav_supported or recorder_supported
 

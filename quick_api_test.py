@@ -88,7 +88,7 @@ def test_individual_apis():
 
         try:
             with open(temp_path, "rb") as f:
-                files = {"audio": ("test.wav", f, "audio/wav")}
+                files = {"audio": ("test.webm", f, "audio/webm")}
                 response = requests.post(
                     f"{base_url}/api/stt",
                     files=files,

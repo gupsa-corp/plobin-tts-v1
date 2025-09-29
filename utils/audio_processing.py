@@ -51,7 +51,7 @@ def preprocess_audio(audio_path: str) -> str:
         y_cleaned = np.where(np.abs(y_normalized) < threshold, 0, y_normalized)
 
         # 전처리된 오디오를 임시 파일로 저장
-        processed_path = audio_path.replace('.wav', '_processed.wav')
+        processed_path = audio_path.replace('.webm', '_processed.webm')
         sf.write(processed_path, y_cleaned, sr)
 
         return processed_path
@@ -68,7 +68,7 @@ def cleanup_temp_audio(audio_path: str):
             os.unlink(audio_path)
 
         # 전처리된 파일도 정리
-        processed_path = audio_path.replace('.wav', '_processed.wav')
+        processed_path = audio_path.replace('.webm', '_processed.webm')
         if os.path.exists(processed_path):
             os.unlink(processed_path)
     except Exception as e:

@@ -86,7 +86,7 @@ def test_all_apis():
         try:
             with open(temp_path, "rb") as f:
                 # 올바른 파라미터명: audio_file
-                files = {"audio_file": ("test.wav", f, "audio/wav")}
+                files = {"audio_file": ("test.webm", f, "audio/webm")}
                 response = requests.post(f"{base_url}/api/stt", files=files, timeout=30)
 
             success = response.status_code == 200

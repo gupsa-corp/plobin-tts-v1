@@ -37,7 +37,7 @@ app = FastAPI(
     이 API는 다음 기능을 제공합니다:
 
     ### HTTP API
-    - **POST /tts**: 텍스트를 음성 파일(WAV)로 변환
+    - **POST /tts**: 텍스트를 음성 파일(WebM)로 변환
     - **GET /health**: 서버 상태 확인
 
     ### WebSocket API
@@ -204,7 +204,7 @@ async def root():
 @app.post("/tts", tags=["TTS"],
           summary="텍스트를 음성으로 변환",
           description="""
-## 텍스트를 음성(WAV 파일)으로 변환
+## 텍스트를 음성(WebM 파일)으로 변환
 
 ### 매개변수:
 - **text**: 변환할 텍스트 (한국어, 영어 등 지원)
@@ -212,7 +212,7 @@ async def root():
 - **speed**: 음성 속도 (기본값: 1.0)
 
 ### 응답:
-- WAV 형식의 오디오 파일 (24kHz, 16-bit, mono)
+- WebM 형식의 오디오 파일 (Opus 코덱, 64kbps)
 
 ### 예시 요청:
 ```json
@@ -243,7 +243,7 @@ async def text_to_speech(request: TTSRequest):
 
         return FileResponse(
             path=temp_path,
-            media_type="audio/wav",
+            media_type="audio/webm",
             filename=f"tts_output.wav"
         )
 
@@ -412,7 +412,7 @@ async def batch_text_to_speech(request: BatchTTSRequest):
                     filename, file_path = audio_files[0]
                     return FileResponse(
                         path=file_path,
-                        media_type="audio/wav",
+                        media_type="audio/webm",
                         filename=filename
                     )
 

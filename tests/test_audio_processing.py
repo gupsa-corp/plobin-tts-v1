@@ -26,9 +26,9 @@ class TestAudioProcessing:
         # 두 파일명이 달라야 함
         assert filename1 != filename2
 
-        # .wav 확장자가 있어야 함
-        assert filename1.endswith('.wav')
-        assert filename2.endswith('.wav')
+        # .webm 확장자가 있어야 함
+        assert filename1.endswith('.webm')
+        assert filename2.endswith('.webm')
 
         # 파일명 길이 검증
         assert len(filename1) > 10  # 최소 길이
@@ -82,7 +82,7 @@ class TestAudioProcessing:
 
             # 결과 파일 경로가 반환되었는지 확인
             assert isinstance(result, str)
-            assert result.endswith('.wav')
+            assert result.endswith('.webm')
 
     def test_validate_audio_file_valid(self, sample_audio_file):
         """유효한 오디오 파일 검증 테스트"""
@@ -136,7 +136,7 @@ class TestAudioFormats:
 
     def test_supported_audio_formats(self):
         """지원되는 오디오 형식 테스트"""
-        supported_formats = ['.wav', '.mp3', '.flac', '.ogg']
+        supported_formats = ['.webm', '.mp3', '.flac', '.ogg']
 
         for format_ext in supported_formats:
             filename = f"test{format_ext}"

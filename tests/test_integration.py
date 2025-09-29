@@ -29,7 +29,7 @@ class TestFullSystemIntegration:
 
             # 2. 생성된 음성을 STT로 변환
             with open(sample_audio_file, "rb") as f:
-                files = {"audio": ("test.wav", f, "audio/wav")}
+                files = {"audio": ("test.webm", f, "audio/webm")}
                 stt_response = client.post("/api/stt", files=files)
 
             assert stt_response.status_code == 200
@@ -168,7 +168,7 @@ class TestErrorHandlingIntegration:
             f.write("This is not audio")
 
         with open(fake_audio, "rb") as f:
-            files = {"audio": ("fake.wav", f, "audio/wav")}
+            files = {"audio": ("fake.webm", f, "audio/webm")}
             response = client.post("/api/stt", files=files)
 
         # 적절한 오류 응답이 반환되어야 함
@@ -260,7 +260,7 @@ class TestSecurityIntegration:
                 f.write(b"fake audio data")
 
             with open(fake_file, "rb") as f:
-                files = {"audio": (name, f, "audio/wav")}
+                files = {"audio": (name, f, "audio/webm")}
                 response = client.post("/api/stt", files=files)
 
             # 요청이 적절히 거부되거나 처리되어야 함

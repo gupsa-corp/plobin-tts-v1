@@ -167,7 +167,7 @@ class APITester:
 
         try:
             with open(temp_audio, "rb") as f:
-                files = {"audio": ("test.wav", f, "audio/wav")}
+                files = {"audio": ("test.webm", f, "audio/webm")}
                 result = self.test_endpoint("POST", "/api/stt", files=files, description="STT 테스트")
                 self.results["/api/stt"] = result
 

@@ -67,7 +67,7 @@ class MeloTTS:
 
         Args:
             text (str): 변환할 텍스트
-            output_path (str): 출력 파일 경로 (.wav)
+            output_path (str): 출력 파일 경로 (.webm)
             speaker_id (int): 화자 ID (기본값: 0)
             speed (float): 음성 속도 (기본값: 1.0)
         """
@@ -91,7 +91,7 @@ def main():
     parser.add_argument('--language', '-l', type=str, default='KR',
                        choices=['KR', 'EN', 'EN_V2', 'EN_NEWEST', 'ZH', 'JP', 'FR', 'ES'],
                        help='언어 선택 (기본: KR)')
-    parser.add_argument('--output', '-o', type=str, default='output.wav', help='출력 파일명')
+    parser.add_argument('--output', '-o', type=str, default='output.webm', help='출력 파일명')
     parser.add_argument('--speaker', '-s', type=int, default=0, help='화자 ID')
     parser.add_argument('--speed', type=float, default=1.0, help='음성 속도')
     parser.add_argument('--device', type=str, default='auto', help='디바이스 (auto/cuda/cpu/mps - 기본값: auto)')

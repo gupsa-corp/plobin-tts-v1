@@ -139,7 +139,7 @@ navigator.mediaDevices.getUserMedia({ audio: true })
         };
 
         mediaRecorder.onstop = () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             const reader = new FileReader();
 
             reader.onload = () => {
@@ -332,7 +332,7 @@ navigator.mediaDevices.getUserMedia({ audio: true })
 
         mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
         mediaRecorder.onstop = () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             const reader = new FileReader();
             reader.onload = () => {
                 const base64Audio = reader.result.split(',')[1];

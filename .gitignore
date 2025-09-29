@@ -14,11 +14,12 @@ env/
 
 # 생성된 음성 파일들
 *.wav
+*.webm
 *.mp3
 *.flac
-test_*.wav
-korean_test.wav
-output.wav
+test_*.webm
+korean_test.webm
+output.webm
 
 # Python 캐시
 __pycache__/
