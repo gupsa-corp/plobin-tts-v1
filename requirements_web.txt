@@ -1,0 +1,19 @@
+# 웹 서버 의존성
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+websockets>=12.0
+pydantic>=2.5.0
+
+# STT (Speech-to-Text)
+openai-whisper>=20231117
+
+# 기존 TTS 의존성 (CLAUDE.md 기준)
+torch
+torchaudio
+librosa
+transformers
+huggingface_hub
+g2pkk
+jamo
+python-mecab-ko
+protobuf

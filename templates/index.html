@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>음성 대화 시스템</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎙️ 음성 대화 시스템</h1>
+            <p>마이크를 사용해서 음성으로 대화해보세요</p>
+        </header>
+
+        <main>
+            <!-- 시스템 상태 -->
+            <div class="status-panel">
+                <div class="status-item">
+                    <span class="label">TTS:</span>
+                    <span id="tts-status" class="status">확인 중...</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">STT:</span>
+                    <span id="stt-status" class="status">확인 중...</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">연결:</span>
+                    <span id="connection-status" class="status">연결 중...</span>
+                </div>
+            </div>
+
+            <!-- 음성 컨트롤 -->
+            <div class="voice-controls">
+                <button id="start-record" class="btn btn-primary">
+                    🎤 녹음 시작
+                </button>
+                <button id="stop-record" class="btn btn-secondary" disabled>
+                    ⏹️ 녹음 중지
+                </button>
+                <div class="recording-indicator" id="recording-indicator">
+                    <div class="pulse"></div>
+                    <span>녹음 중...</span>
+                </div>
+            </div>
+
+            <!-- 대화 기록 -->
+            <div class="chat-container">
+                <div id="chat-messages" class="chat-messages">
+                    <div class="message system-message">
+                        <div class="message-content">
+                            <span class="message-text">음성 대화 시스템에 오신 것을 환영합니다! 마이크 버튼을 눌러 대화를 시작하세요.</span>
+                            <span class="message-time">시스템</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 설정 패널 -->
+            <div class="settings-panel">
+                <h3>설정</h3>
+                <div class="setting-group">
+                    <label for="language-select">TTS 언어:</label>
+                    <select id="language-select">
+                        <option value="KR">한국어</option>
+                        <option value="EN">영어 (v1)</option>
+                        <option value="EN_V2">영어 (v2)</option>
+                        <option value="EN_NEWEST">영어 (v3)</option>
+                        <option value="ZH">중국어</option>
+                        <option value="JP">일본어</option>
+                        <option value="FR">프랑스어</option>
+                        <option value="ES">스페인어</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label for="speed-input">TTS 속도:</label>
+                    <input type="range" id="speed-input" min="0.5" max="2.0" step="0.1" value="1.0">
+                    <span id="speed-value">1.0</span>
+                </div>
+                <div class="setting-group">
+                    <button id="clear-chat" class="btn btn-outline">채팅 기록 지우기</button>
+                </div>
+            </div>
+
+            <!-- 테스트 패널 -->
+            <div class="test-panel">
+                <h3>텍스트 TTS 테스트</h3>
+                <div class="test-input-group">
+                    <textarea id="test-text" placeholder="테스트할 텍스트를 입력하세요...">안녕하세요. 음성 대화 시스템 테스트입니다.</textarea>
+                    <button id="test-tts" class="btn btn-primary">음성 변환</button>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>
+                <a href="/docs" target="_blank">📖 API 문서 (Swagger)</a> |
+                <a href="/redoc" target="_blank">📚 ReDoc</a>
+            </p>
+        </footer>
+    </div>
+
+    <script src="/static/js/voice-chat.js"></script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Plobin TTS v1 - Korean Text-to-Speech System
 
-한국어 텍스트를 음성으로 변환하는 고품질 TTS(Text-to-Speech) 시스템
+한국어 텍스트를 음성으로 변환하는 고품질 TTS(Text-to-Speech) 시스템2 
 
 ## 🚀 주요 특징
 
