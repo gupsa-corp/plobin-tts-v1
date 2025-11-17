@@ -1,0 +1,33 @@
+# TTS 서비스 필수 패키지
+# Python 3.9+ 필요
+
+# 웹 서버
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+
+# PyTorch (CUDA 버전, CPU 버전은 설치 스크립트에서 자동 선택)
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# 오디오 처리
+soundfile>=0.12.0
+pydub>=0.25.0
+librosa>=0.10.0
+
+# 한국어 처리
+g2pkk>=0.1.2
+jamo>=0.4.1
+python-mecab-ko>=1.3.0
+
+# AI/ML 라이브러리
+transformers>=4.30.0
+huggingface_hub>=0.16.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# 기타
+websockets>=12.0
+protobuf>=4.21.0
+tqdm>=4.65.0

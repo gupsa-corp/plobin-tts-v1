@@ -1,0 +1,20 @@
+[Unit]
+Description=Korean TTS Server
+After=network.target
+
+[Service]
+Type=simple
+User=gupsa
+Group=gupsa
+WorkingDirectory=/home/gupsa/문서/Host/40003/plobin-api-tts
+Environment=PYTHONPATH=/home/gupsa/문서/Host/40003/plobin-api-tts/MeloTTS
+Environment=CUDA_VISIBLE_DEVICES=0
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/gupsa/문서/Host/40003/plobin-api-tts/korean_tts_env/bin/python robust_tts_server.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,23 +1,28 @@
-version: '3.8'
-
 services:
   tts-server:
-    build: .
+    image: python:3.12
     container_name: tts-only-server
-    ports:
-      - "40003:40003"
+    working_dir: /app
+    network_mode: host
+    command: bash -c "cd /app && python -m venv venv && source venv/bin/activate && python -c 'import sys; print(sys.executable)' && ls -la && source korean_tts_env/bin/activate && export PYTHONPATH=/app/MeloTTS && python robust_tts_server.py"
     volumes:
-      # 모델 파일들을 호스트에서 마운트
-      - ./models:/app/models
-      # 생성된 오디오 파일들 저장
-      - ./static/audio:/app/static/audio
+      # 전체 프로젝트 디렉토리 마운트
+      - .:/app
     environment:
       - PYTHONPATH=/app/MeloTTS
-      - CUDA_VISIBLE_DEVICES=
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONUNBUFFERED=1
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:40003/api/models/status"]
+      test: ["CMD-SHELL", "curl -f http://localhost:40003/api/models/status || exit 1"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s
       retries: 3
       start_period: 60s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
