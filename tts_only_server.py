@@ -220,45 +220,68 @@ async def text_to_speech(request: TTSRequest):
             error="TTS 모델이 사용 가능하지 않습니다"
         )
 
-    try:
-        # 오디오 저장 디렉토리 확인
-        audio_dir = Path("static/audio")
-        audio_dir.mkdir(parents=True, exist_ok=True)
+    # Broken pipe 오류 시 재시도 로직
+    max_retries = 2
+    for attempt in range(max_retries):
+        try:
+            # 오디오 저장 디렉토리 확인
+            audio_dir = Path("static/audio")
+            audio_dir.mkdir(parents=True, exist_ok=True)
 
-        # 고유한 파일명 생성
-        audio_filename = f"audio_{uuid.uuid4().hex}.wav"
-        audio_path = audio_dir / audio_filename
+            # 고유한 파일명 생성
+            audio_filename = f"audio_{uuid.uuid4().hex}.wav"
+            audio_path = audio_dir / audio_filename
 
-        # TTS 생성
-        speaker_ids = tts_model.hps.data.spk2id
-        speaker_key = list(speaker_ids.keys())[0]  # 첫 번째 화자 사용
+            # TTS 생성
+            speaker_ids = tts_model.hps.data.spk2id
+            speaker_key = list(speaker_ids.keys())[0]  # 첫 번째 화자 사용
 
-        # 음성 생성
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
-            tts_model.tts_to_file(
-                request.text,
-                speaker_ids[speaker_key],
-                temp_file.name,
-                speed=request.speed
+            # 음성 생성
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
+                tts_model.tts_to_file(
+                    request.text,
+                    speaker_ids[speaker_key],
+                    temp_file.name,
+                    speed=request.speed
+                )
+
+                # 임시 파일을 최종 위치로 복사
+                import shutil
+                shutil.move(temp_file.name, audio_path)
+
+            audio_url = f"/static/audio/{audio_filename}"
+
+            return TTSResponse(
+                success=True,
+                audio_url=audio_url
             )
 
-            # 임시 파일을 최종 위치로 복사
-            import shutil
-            shutil.move(temp_file.name, audio_path)
+        except Exception as e:
+            error_msg = str(e)
+            print(f"TTS 생성 오류 (시도 {attempt + 1}/{max_retries}): {error_msg}")
 
-        audio_url = f"/static/audio/{audio_filename}"
+            # Broken pipe 오류이고 재시도 가능한 경우
+            if "Errno 32" in error_msg or "Broken pipe" in error_msg:
+                if attempt < max_retries - 1:  # 마지막 시도가 아닌 경우
+                    print("🔄 TTS 모델 재로드 시도...")
+                    try:
+                        # 모델 재로드
+                        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+                        tts_model = TTS(language="KR", device=device)
+                        print("✅ TTS 모델 재로드 완료")
+                        continue  # 재시도
+                    except Exception as reload_error:
+                        print(f"❌ TTS 모델 재로드 실패: {reload_error}")
+                        return TTSResponse(
+                            success=False,
+                            error=f"모델 재로드 실패: {str(reload_error)}"
+                        )
 
-        return TTSResponse(
-            success=True,
-            audio_url=audio_url
-        )
-
-    except Exception as e:
-        print(f"TTS 생성 오류: {e}")
-        return TTSResponse(
-            success=False,
-            error=f"음성 생성 중 오류가 발생했습니다: {str(e)}"
-        )
+            # 재시도 불가능하거나 마지막 시도인 경우
+            return TTSResponse(
+                success=False,
+                error=f"음성 생성 중 오류가 발생했습니다: {error_msg}"
+            )
 
 @app.get("/api/models/status", response_model=ModelStatusResponse)
 async def get_models_status():
