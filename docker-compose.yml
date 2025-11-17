@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  tts-server:
+    build: .
+    container_name: tts-only-server
+    ports:
+      - "40003:40003"
+    volumes:
+      # 모델 파일들을 호스트에서 마운트
+      - ./models:/app/models
+      # 생성된 오디오 파일들 저장
+      - ./static/audio:/app/static/audio
+    environment:
+      - PYTHONPATH=/app/MeloTTS
+      - CUDA_VISIBLE_DEVICES=
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:40003/api/models/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
