@@ -824,7 +824,7 @@ if __name__ == "__main__":
     print("  WebSocket /ws/tts - 실시간 TTS 스트리밍")
     print("  GET /health - 서버 상태 확인")
     print("  GET / - 기본 정보")
-    print("\n서버 주소: http://localhost:6001")
-    print("WebSocket 주소: ws://localhost:6001/ws/tts")
+    print("\n서버 주소: http://localhost:40003")
+    print("WebSocket 주소: ws://localhost:40003/ws/tts")
 
-    uvicorn.run(app, host="0.0.0.0", port=6001)
+    uvicorn.run(app, host="0.0.0.0", port=40003)

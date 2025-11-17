@@ -15,7 +15,7 @@ def test_demo_functionality():
     # 1. 데모 페이지 접근 테스트
     print("\n1️⃣  데모 페이지 접근...")
     try:
-        response = requests.get("http://localhost:6001/static/demo.html", timeout=10)
+        response = requests.get("http://localhost:40003/static/demo.html", timeout=10)
         if response.status_code == 200:
             print("✅ 데모 페이지 접근 성공")
             content = response.text
@@ -56,7 +56,7 @@ def test_demo_functionality():
             }
 
             response = requests.post(
-                "http://localhost:6001/api/tts",
+                "http://localhost:40003/api/tts",
                 json=tts_data,
                 timeout=15
             )
@@ -76,7 +76,7 @@ def test_demo_functionality():
     # 3. 언어 선택 API 테스트
     print("\n3️⃣  언어 선택 기능...")
     try:
-        response = requests.get("http://localhost:6001/api/languages", timeout=10)
+        response = requests.get("http://localhost:40003/api/languages", timeout=10)
         if response.status_code == 200:
             data = response.json()
             languages = data.get('languages', [])
@@ -99,7 +99,7 @@ def test_demo_functionality():
     # 4. WebSocket 정보 확인
     print("\n4️⃣  WebSocket 엔드포인트...")
     try:
-        response = requests.get("http://localhost:6001/api/websocket/info", timeout=10)
+        response = requests.get("http://localhost:40003/api/websocket/info", timeout=10)
         if response.status_code == 200:
             data = response.json()
             endpoints = data.get('endpoints', [])
@@ -123,7 +123,7 @@ def test_demo_functionality():
 
     for file_path in static_files:
         try:
-            response = requests.get(f"http://localhost:6001{file_path}", timeout=5)
+            response = requests.get(f"http://localhost:40003{file_path}", timeout=5)
             if response.status_code == 200:
                 print(f"✅ {file_path}")
             else:
@@ -135,7 +135,7 @@ def test_demo_functionality():
     print("🎯 데모 테스트 완료!")
     print("")
     print("🌐 데모 페이지 URL:")
-    print("   http://localhost:6001/static/demo.html")
+    print("   http://localhost:40003/static/demo.html")
     print("")
     print("✨ 주요 기능:")
     print("   🎤 마이크 클릭 또는 스페이스바로 음성 입력")

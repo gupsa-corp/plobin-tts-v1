@@ -18,7 +18,7 @@ pip install -r requirements_test.txt
 
 # 서버 실행 상태 확인
 echo "🔍 서버 상태 확인 중..."
-if curl -s http://localhost:6001/api/models/status > /dev/null 2>&1; then
+if curl -s http://localhost:40003/api/models/status > /dev/null 2>&1; then
     echo "✅ 서버가 실행 중입니다."
     SERVER_RUNNING=true
 else

@@ -110,8 +110,8 @@ open htmlcov/index.html
 # 통합 테스트 활성화
 export INTEGRATION_TESTS=1
 
-# 테스트 서버 URL (기본값: http://localhost:6001)
-export TEST_SERVER_URL=http://localhost:6001
+# 테스트 서버 URL (기본값: http://localhost:40003)
+export TEST_SERVER_URL=http://localhost:40003
 ```
 
 ### Chrome/Chromium 설치 (E2E 테스트용)
@@ -131,7 +131,7 @@ sudo apt-get install chromium-browser
 1. **서버 연결 실패**
    ```bash
    # 서버 실행 확인
-   curl http://localhost:6001/api/models/status
+   curl http://localhost:40003/api/models/status
 
    # 서버 재시작
    ./run_web.sh
@@ -251,7 +251,7 @@ jobs:
 
 1. **로그 확인**: `pytest -v --tb=long`
 2. **의존성 확인**: `pip list | grep pytest`
-3. **서버 상태 확인**: `curl http://localhost:6001/api/models/status`
+3. **서버 상태 확인**: `curl http://localhost:40003/api/models/status`
 4. **브라우저 확인**: `google-chrome --version`
 
 ## 🔗 관련 문서

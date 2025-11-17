@@ -10,7 +10,7 @@ import os
 
 def test_all_apis():
     """모든 API 올바른 스키마로 테스트"""
-    base_url = "http://localhost:6001"
+    base_url = "http://localhost:40003"
 
     print("🎯 최종 API 테스트 (올바른 스키마)")
     print("=" * 50)

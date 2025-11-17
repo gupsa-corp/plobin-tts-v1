@@ -118,8 +118,8 @@ async def get_index():
                 <div class="endpoint">
                     <h3>🔌 WebSocket 엔드포인트</h3>
                     <ul>
-                        <li><strong>실시간 STT:</strong> <code>ws://localhost:6001/ws/stt</code></li>
-                        <li><strong>음성 대화:</strong> <code>ws://localhost:6001/ws/chat</code></li>
+                        <li><strong>실시간 STT:</strong> <code>ws://localhost:40003/ws/stt</code></li>
+                        <li><strong>음성 대화:</strong> <code>ws://localhost:40003/ws/chat</code></li>
                     </ul>
                 </div>
 

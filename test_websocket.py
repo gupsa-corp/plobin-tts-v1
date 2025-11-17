@@ -16,8 +16,8 @@ async def test_websocket_connection():
 
     # WebSocket 엔드포인트 테스트
     endpoints = [
-        ("ws://localhost:6001/ws/chat", "음성 대화"),
-        ("ws://localhost:6001/ws/stt", "STT 전용")
+        ("ws://localhost:40003/ws/chat", "음성 대화"),
+        ("ws://localhost:40003/ws/stt", "STT 전용")
     ]
 
     for ws_url, description in endpoints:
@@ -77,7 +77,7 @@ async def test_chat_websocket_features():
 
     try:
         session = aiohttp.ClientSession()
-        ws_url = "ws://localhost:6001/ws/chat"
+        ws_url = "ws://localhost:40003/ws/chat"
 
         async with session.ws_connect(ws_url, timeout=aiohttp.ClientTimeout(total=10)) as ws:
             print(f"   ✅ 연결 성공")

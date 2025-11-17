@@ -8,7 +8,7 @@ from typing import Optional
 
 # 서버 설정
 SERVER_HOST = "0.0.0.0"
-SERVER_PORT = 6001  # 기존 포트로 통합
+SERVER_PORT = 40003  # 기존 포트로 통합
 DEBUG = True
 
 # TTS 설정

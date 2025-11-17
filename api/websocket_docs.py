@@ -67,7 +67,7 @@ async def get_websocket_documentation():
                 path="/ws/stt",
                 name="실시간 STT (음성 → 텍스트)",
                 description="음성을 실시간으로 텍스트로 변환합니다. 한국어 최적화 및 노이즈 제거 기능 포함.",
-                connection_url="ws://localhost:6001/ws/stt",
+                connection_url="ws://localhost:40003/ws/stt",
                 message_formats={
                     "send": {
                         "audio": {
@@ -101,7 +101,7 @@ async def get_websocket_documentation():
                 examples={
                     "javascript": """
 // WebSocket 연결
-const ws = new WebSocket('ws://localhost:6001/ws/stt');
+const ws = new WebSocket('ws://localhost:40003/ws/stt');
 
 // 연결 성공
 ws.onopen = () => {
@@ -168,7 +168,7 @@ navigator.mediaDevices.getUserMedia({ audio: true })
                 path="/ws/chat",
                 name="실시간 음성 대화 (STT + TTS)",
                 description="음성 입력을 받아 텍스트로 변환하고, 자동 응답을 음성으로 출력하는 완전 자동화된 대화 시스템입니다.",
-                connection_url="ws://localhost:6001/ws/chat",
+                connection_url="ws://localhost:40003/ws/chat",
                 message_formats={
                     "send": {
                         "audio": {
@@ -209,7 +209,7 @@ navigator.mediaDevices.getUserMedia({ audio: true })
                 examples={
                     "javascript": """
 // WebSocket 연결
-const ws = new WebSocket('ws://localhost:6001/ws/chat');
+const ws = new WebSocket('ws://localhost:40003/ws/chat');
 
 // 연결 성공
 ws.onopen = () => {
@@ -256,7 +256,7 @@ function startAutoChat() {
             )
         ],
         common_patterns={
-            "connection": "모든 WebSocket은 ws://localhost:6001/ws/<endpoint> 형식으로 연결",
+            "connection": "모든 WebSocket은 ws://localhost:40003/ws/<endpoint> 형식으로 연결",
             "message_format": "JSON 형식 메시지, 'type' 필드로 메시지 구분",
             "audio_encoding": "오디오 데이터는 Base64로 인코딩하여 'data' 필드에 전송",
             "error_handling": "모든 오류는 {type: 'error', error: '메시지'} 형식으로 응답",
@@ -270,7 +270,7 @@ function startAutoChat() {
         },
         connection_guide=[
             "1. /api/health 엔드포인트로 서버 상태 확인",
-            "2. WebSocket 연결: new WebSocket('ws://localhost:6001/ws/<endpoint>')",
+            "2. WebSocket 연결: new WebSocket('ws://localhost:40003/ws/<endpoint>')",
             "3. onopen 이벤트에서 연결 확인",
             "4. JSON 형식으로 메시지 송수신",
             "5. 오류 처리를 위한 onerror 및 onclose 이벤트 핸들러 구현"
@@ -287,13 +287,13 @@ async def get_websocket_endpoints():
             {
                 "path": "/ws/stt",
                 "name": "실시간 STT",
-                "url": "ws://localhost:6001/ws/stt",
+                "url": "ws://localhost:40003/ws/stt",
                 "description": "음성을 실시간으로 텍스트로 변환"
             },
             {
                 "path": "/ws/chat",
                 "name": "실시간 음성 대화",
-                "url": "ws://localhost:6001/ws/chat",
+                "url": "ws://localhost:40003/ws/chat",
                 "description": "STT + TTS 통합 음성 대화 시스템"
             }
         ],
@@ -313,7 +313,7 @@ async def get_websocket_examples(endpoint: str):
             "description": "실시간 STT WebSocket 사용 예제",
             "javascript": """
 // 실시간 STT 연결
-const sttSocket = new WebSocket('ws://localhost:6001/ws/stt');
+const sttSocket = new WebSocket('ws://localhost:40003/ws/stt');
 
 sttSocket.onopen = () => console.log('STT 연결됨');
 
@@ -372,7 +372,7 @@ navigator.mediaDevices.getUserMedia({ audio: true })
             "description": "실시간 음성 대화 WebSocket 사용 예제",
             "javascript": """
 // 실시간 음성 대화 연결
-const chatSocket = new WebSocket('ws://localhost:6001/ws/chat');
+const chatSocket = new WebSocket('ws://localhost:40003/ws/chat');
 
 chatSocket.onopen = () => console.log('음성 대화 연결됨');
 

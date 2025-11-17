@@ -10,7 +10,7 @@ import os
 
 def test_individual_apis():
     """개별 API 테스트"""
-    base_url = "http://localhost:6001"
+    base_url = "http://localhost:40003"
 
     print("🧪 개별 API 테스트")
     print("=" * 40)

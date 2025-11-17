@@ -2,7 +2,7 @@
 
 **테스트 일시**: 2025년 9월 29일
 **테스트 대상**: 통합 음성 대화 시스템 v2.2.0
-**서버 URL**: http://localhost:6001
+**서버 URL**: http://localhost:40003
 
 ---
 
@@ -171,8 +171,8 @@
 ### 🚀 **즉시 사용 가능**
 현재 시스템은 **프로덕션 환경에서 바로 사용 가능**한 수준입니다:
 
-1. **데모 시연**: `http://localhost:6001/static/demo.html`
-2. **API 문서**: `http://localhost:6001/docs`
+1. **데모 시연**: `http://localhost:40003/static/demo.html`
+2. **API 문서**: `http://localhost:40003/docs`
 3. **개발 가이드**: WebSocket 예제 코드 활용
 
 ### 🔧 **개선 제안**

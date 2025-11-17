@@ -31,8 +31,8 @@ python3 test_korean_model.py
 
 # 🌐 웹 음성 대화 시스템 (NEW!) - 추천
 ./run_web.sh
-# 접속: http://localhost:8000
-# API 문서: http://localhost:8000/docs
+# 접속: http://localhost:40003
+# API 문서: http://localhost:40003/docs
 
 # GUI 실행 (데스크톱)
 ./run_gui.sh
@@ -112,7 +112,7 @@ GPU 사용 시 실시간 대화 수준의 빠른 음성 변환 가능
 
 ### 💡 사용법
 1. `./run_web.sh` 실행
-2. http://localhost:8000 접속
+2. http://localhost:40003 접속
 3. 마이크 권한 허용
 4. 🎤 녹음 버튼 클릭하거나 스페이스바로 음성 입력
 5. 실시간 음성 대화 즐기기!

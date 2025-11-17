@@ -14,7 +14,7 @@ def test_server_health():
     """서버 헬스 체크"""
     print("🔍 서버 상태 확인 중...")
     try:
-        response = requests.get("http://localhost:6001/api/models/status", timeout=10)
+        response = requests.get("http://localhost:40003/api/models/status", timeout=10)
         if response.status_code == 200:
             data = response.json()
             print(f"✅ 서버 정상 작동")
@@ -33,7 +33,7 @@ def test_languages_api():
     """언어 목록 API 테스트"""
     print("\n🌍 언어 목록 API 테스트...")
     try:
-        response = requests.get("http://localhost:6001/api/languages", timeout=10)
+        response = requests.get("http://localhost:40003/api/languages", timeout=10)
         if response.status_code == 200:
             data = response.json()
             languages = data.get('languages', [])
@@ -59,7 +59,7 @@ def test_tts_api():
         }
 
         response = requests.post(
-            "http://localhost:6001/api/tts",
+            "http://localhost:40003/api/tts",
             json=tts_data,
             timeout=30
         )
@@ -96,7 +96,7 @@ def test_static_files():
     success_count = 0
     for file_path in test_files:
         try:
-            response = requests.get(f"http://localhost:6001{file_path}", timeout=10)
+            response = requests.get(f"http://localhost:40003{file_path}", timeout=10)
             if response.status_code == 200:
                 print(f"✅ {file_path}")
                 success_count += 1
@@ -112,7 +112,7 @@ def test_websocket_connection():
     print("\n🔌 WebSocket 엔드포인트 확인...")
     try:
         # WebSocket 정보 API로 등록 상태 확인
-        response = requests.get("http://localhost:6001/api/websocket/info", timeout=10)
+        response = requests.get("http://localhost:40003/api/websocket/info", timeout=10)
         if response.status_code == 200:
             data = response.json()
             endpoints = data.get('endpoints', [])
@@ -144,7 +144,7 @@ def test_main_page():
     """메인 페이지 로딩 테스트"""
     print("\n🏠 메인 페이지 테스트...")
     try:
-        response = requests.get("http://localhost:6001/", timeout=10)
+        response = requests.get("http://localhost:40003/", timeout=10)
         if response.status_code == 200:
             content = response.text
             # 기본적인 HTML 요소 확인
@@ -177,7 +177,7 @@ def test_api_docs():
     """API 문서 테스트"""
     print("\n📚 API 문서 테스트...")
     try:
-        response = requests.get("http://localhost:6001/docs", timeout=10)
+        response = requests.get("http://localhost:40003/docs", timeout=10)
         if response.status_code == 200:
             print("✅ Swagger UI 접근 가능")
             return True

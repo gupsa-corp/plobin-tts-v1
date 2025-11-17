@@ -20,8 +20,8 @@ echo "📋 의존성 패키지 확인..."
 pip install -r requirements_web.txt
 
 # 웹 서버 실행
-echo "🌐 웹 서버 시작 (http://localhost:8000)"
-echo "📖 API 문서: http://localhost:8000/docs"
+echo "🌐 웹 서버 시작 (http://localhost:40003)"
+echo "📖 API 문서: http://localhost:40003/docs"
 echo ""
 echo "종료하려면 Ctrl+C를 누르세요"
 echo ""

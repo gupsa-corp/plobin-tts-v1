@@ -38,7 +38,7 @@ def browser():
 @pytest.fixture
 def server_url():
     """서버 URL"""
-    return "http://localhost:6001"
+    return "http://localhost:40003"
 
 class TestMainPage:
     """메인 페이지 E2E 테스트"""

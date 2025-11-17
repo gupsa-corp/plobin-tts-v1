@@ -41,7 +41,7 @@
 
         document.getElementById('testWS').onclick = function() {
             log('WebSocket 연결 시도...');
-            const ws = new WebSocket('ws://localhost:6001/ws/chat');
+            const ws = new WebSocket('ws://localhost:40003/ws/chat');
 
             ws.onopen = function() {
                 log('✅ WebSocket 연결 성공!');

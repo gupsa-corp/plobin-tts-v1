@@ -114,7 +114,7 @@ def test_config():
     """테스트용 설정"""
     return {
         "SERVER_HOST": "127.0.0.1",
-        "SERVER_PORT": 6001,
+        "SERVER_PORT": 40003,
         "STT_LANGUAGE": "ko",
         "TTS_LANGUAGE": "KR",
         "AUDIO_SAMPLE_RATE": 16000,

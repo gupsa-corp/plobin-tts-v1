@@ -12,6 +12,7 @@ import warnings
 import json
 import uuid
 import subprocess
+import time
 from pathlib import Path
 from typing import Optional, List
 import base64
@@ -385,7 +386,7 @@ async def get_websocket_info():
                 "supported_audio_formats": ["WEBM"],
                 "example_js_code": """
 // 스트리밍 STT WebSocket 연결
-const streamingWs = new WebSocket('ws://localhost:6001/ws/streaming-stt');
+const streamingWs = new WebSocket('ws://localhost:40003/ws/streaming-stt');
 
 // 스트림 시작
 streamingWs.send(JSON.stringify({
@@ -471,9 +472,9 @@ streamingWs.onmessage = (event) => {
             "pong": "ping에 대한 응답"
         },
         "connection_examples": {
-            "legacy_stt": "ws://localhost:6001/ws/stt",
-            "streaming_stt": "ws://localhost:6001/ws/streaming-stt",
-            "chat": "ws://localhost:6001/ws/chat"
+            "legacy_stt": "ws://localhost:40003/ws/stt",
+            "streaming_stt": "ws://localhost:40003/ws/streaming-stt",
+            "chat": "ws://localhost:40003/ws/chat"
         }
     }
 
@@ -622,11 +623,28 @@ class ConnectionManager:
         self.active_connections.remove(websocket)
 
     async def send_personal_message(self, message: str, websocket: WebSocket):
-        await websocket.send_text(message)
+        try:
+            if websocket in self.active_connections:
+                await websocket.send_text(message)
+        except Exception as e:
+            print(f"WebSocket 메시지 전송 실패: {e}")
+            # 연결이 끊어진 경우 목록에서 제거
+            if websocket in self.active_connections:
+                self.active_connections.remove(websocket)
 
     async def broadcast(self, message: str):
+        dead_connections = []
         for connection in self.active_connections:
-            await connection.send_text(message)
+            try:
+                await connection.send_text(message)
+            except Exception as e:
+                print(f"브로드캐스트 실패 (연결 제거): {e}")
+                dead_connections.append(connection)
+
+        # 끊어진 연결들 정리
+        for dead_conn in dead_connections:
+            if dead_conn in self.active_connections:
+                self.active_connections.remove(dead_conn)
 
 manager = ConnectionManager()
 
@@ -1113,7 +1131,7 @@ if __name__ == "__main__":
     print("🚀 음성 대화 시스템 웹 서버 시작...")
     print(f"TTS 지원: {'Yes' if TTS_AVAILABLE else 'No'}")
     print(f"STT 지원: {'Yes' if STT_AVAILABLE else 'No'}")
-    print("📖 API 문서: http://localhost:6001/docs")
-    print("🌐 웹 앱: http://localhost:6001")
+    print("📖 API 문서: http://localhost:40003/docs")
+    print("🌐 웹 앱: http://localhost:40003")
 
-    uvicorn.run(app, host="0.0.0.0", port=6001)
+    uvicorn.run(app, host="0.0.0.0", port=40003)

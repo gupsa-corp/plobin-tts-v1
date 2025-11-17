@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 
 class APITester:
-    def __init__(self, base_url="http://localhost:6001"):
+    def __init__(self, base_url="http://localhost:40003"):
         self.base_url = base_url
         self.session = requests.Session()
         self.results = {}

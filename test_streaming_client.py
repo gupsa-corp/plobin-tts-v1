@@ -13,7 +13,7 @@ async def test_streaming_tts():
     """
     WebSocket TTS 스트리밍 테스트
     """
-    uri = "ws://localhost:6001/ws/tts"
+    uri = "ws://localhost:40003/ws/tts"
 
     try:
         async with websockets.connect(uri) as websocket:
@@ -97,7 +97,7 @@ async def test_language_change():
     """
     언어 변경 테스트
     """
-    uri = "ws://localhost:6001/ws/tts"
+    uri = "ws://localhost:40003/ws/tts"
 
     try:
         async with websockets.connect(uri) as websocket:
